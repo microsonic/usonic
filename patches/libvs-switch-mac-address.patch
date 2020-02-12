@@ -1,0 +1,173 @@
+Index: data/sm/sonic-sairedis/vslib/src/Makefile.am
+===================================================================
+--- data.orig/sm/sonic-sairedis/vslib/src/Makefile.am
++++ data/sm/sonic-sairedis/vslib/src/Makefile.am
+@@ -58,7 +58,8 @@ libsaivs_la_SOURCES = \
+ 					  sai_vs_generic_stats.cpp \
+ 					  sai_vs.cpp \
+ 					  sai_vs_switch_BCM56850.cpp \
+-					  sai_vs_switch_MLNX2700.cpp
++					  sai_vs_switch_MLNX2700.cpp \
++					  sai_vs_switch_common.cpp
+ 
+ libsaivs_la_CPPFLAGS = $(DBGFLAGS) $(AM_CPPFLAGS) $(CFLAGS_COMMON)
+ libsaivs_la_LIBADD = -lhiredis -lswsscommon
+Index: data/sm/sonic-sairedis/vslib/src/sai_vs_switch_BCM56850.cpp
+===================================================================
+--- data.orig/sm/sonic-sairedis/vslib/src/sai_vs_switch_BCM56850.cpp
++++ data/sm/sonic-sairedis/vslib/src/sai_vs_switch_BCM56850.cpp
+@@ -1,5 +1,6 @@
+ #include "sai_vs.h"
+ #include "sai_vs_state.h"
++#include "sai_vs_switch_common.h"
+ #include <net/if.h>
+ #include <algorithm>
+ 
+@@ -21,26 +22,6 @@ static std::vector<sai_acl_action_type_t
+ 
+ static sai_object_id_t default_vlan_id;
+ 
+-static sai_status_t set_switch_mac_address()
+-{
+-    SWSS_LOG_ENTER();
+-
+-    SWSS_LOG_INFO("create switch src mac address");
+-
+-    sai_attribute_t attr;
+-
+-    attr.id = SAI_SWITCH_ATTR_SRC_MAC_ADDRESS;
+-
+-    attr.value.mac[0] = 0x11;
+-    attr.value.mac[1] = 0x22;
+-    attr.value.mac[2] = 0x33;
+-    attr.value.mac[3] = 0x44;
+-    attr.value.mac[4] = 0x55;
+-    attr.value.mac[5] = 0x66;
+-
+-    return vs_generic_set(SAI_OBJECT_TYPE_SWITCH, ss->getSwitchId(), &attr);
+-}
+-
+ static sai_status_t set_switch_default_attributes()
+ {
+     SWSS_LOG_ENTER();
+@@ -887,7 +868,7 @@ static sai_status_t initialize_default_o
+ {
+     SWSS_LOG_ENTER();
+ 
+-    CHECK_STATUS(set_switch_mac_address());
++    CHECK_STATUS(set_switch_mac_address(ss));
+ 
+     CHECK_STATUS(create_cpu_port());
+     CHECK_STATUS(create_default_vlan());
+Index: data/sm/sonic-sairedis/vslib/src/sai_vs_switch_MLNX2700.cpp
+===================================================================
+--- data.orig/sm/sonic-sairedis/vslib/src/sai_vs_switch_MLNX2700.cpp
++++ data/sm/sonic-sairedis/vslib/src/sai_vs_switch_MLNX2700.cpp
+@@ -1,5 +1,6 @@
+ #include "sai_vs.h"
+ #include "sai_vs_state.h"
++#include "sai_vs_switch_common.h"
+ 
+ /*
+  * We can use local variable here for initialization (init should be in class
+@@ -19,26 +20,6 @@ static sai_object_id_t default_vlan_id;
+ static sai_object_id_t default_bridge_port_1q_router;
+ static sai_object_id_t cpu_port_id;
+ 
+-static sai_status_t set_switch_mac_address()
+-{
+-    SWSS_LOG_ENTER();
+-
+-    SWSS_LOG_INFO("create switch src mac address");
+-
+-    sai_attribute_t attr;
+-
+-    attr.id = SAI_SWITCH_ATTR_SRC_MAC_ADDRESS;
+-
+-    attr.value.mac[0] = 0x11;
+-    attr.value.mac[1] = 0x22;
+-    attr.value.mac[2] = 0x33;
+-    attr.value.mac[3] = 0x44;
+-    attr.value.mac[4] = 0x55;
+-    attr.value.mac[5] = 0x66;
+-
+-    return vs_generic_set(SAI_OBJECT_TYPE_SWITCH, ss->getSwitchId(), &attr);
+-}
+-
+ static sai_status_t set_switch_default_attributes()
+ {
+     SWSS_LOG_ENTER();
+@@ -828,7 +809,7 @@ static sai_status_t initialize_default_o
+ {
+     SWSS_LOG_ENTER();
+ 
+-    CHECK_STATUS(set_switch_mac_address());
++    CHECK_STATUS(set_switch_mac_address(ss));
+ 
+     CHECK_STATUS(create_cpu_port());
+     CHECK_STATUS(create_default_vlan());
+Index: data/sm/sonic-sairedis/vslib/src/sai_vs_switch_common.cpp
+===================================================================
+--- /dev/null
++++ data/sm/sonic-sairedis/vslib/src/sai_vs_switch_common.cpp
+@@ -0,0 +1,60 @@
++#include "sai_vs.h"
++#include "sai_vs_switch_common.h"
++
++#include <fstream>
++#include <cstdio>
++
++#include <net/if.h>
++
++static int get_default_gw_mac_address(sai_mac_t* mac)
++{
++
++    auto file = std::ifstream("/proc/net/route");
++    if (!file)
++    {
++        return -1;
++    }
++
++    std::string buf;
++    while (std::getline(file, buf))
++    {
++        char iface[IF_NAMESIZE];
++        long destination, gateway;
++        if (std::sscanf(buf.c_str(), "%s %lx %lx", iface, &destination, &gateway) == 3)
++        {
++            if (destination == 0)
++            { /* default */
++                file = std::ifstream("/sys/class/net/" + std::string(iface) + "/address");
++                if ( !file )
++                {
++                    return -1;
++                }
++                file >> buf;
++                return std::sscanf(buf.c_str(), "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &(*mac)[0], &(*mac)[1], &(*mac)[2], &(*mac)[3], &(*mac)[4], &(*mac)[5]) == 6 ? 0 : -1;
++            }
++        }
++    }
++
++    return -1;
++}
++
++sai_status_t set_switch_mac_address(std::shared_ptr<SwitchState> ss)
++{
++    SWSS_LOG_ENTER();
++
++    SWSS_LOG_INFO("create switch src mac address");
++
++    sai_attribute_t attr;
++    attr.id = SAI_SWITCH_ATTR_SRC_MAC_ADDRESS;
++
++    if ( get_default_gw_mac_address(&attr.value.mac) < 0 ) {
++        attr.value.mac[0] = 0x22;
++        attr.value.mac[1] = 0x33;
++        attr.value.mac[2] = 0x44;
++        attr.value.mac[3] = 0x55;
++        attr.value.mac[4] = 0x66;
++        attr.value.mac[5] = 0x77;
++    }
++
++    return vs_generic_set(SAI_OBJECT_TYPE_SWITCH, ss->getSwitchId(), &attr);
++}

@@ -1,0 +1,22 @@
+Source: sonic
+Maintainer: Kamil Cudnik <kcudnik@microsoft.com>
+Section: net
+Priority: optional
+Build-Depends: debhelper (>=9), autotools-dev
+Standards-Version: 1.0.0
+
+Package: syncd
+Architecture: any
+Conflicts: syncd-rpc, syncd-vs
+Description: This package contains sync daemon for SONiC project.
+  This sync daemon syncs the ASIC_DB in Redis database and the real ASIC via SAI.
+
+Package: syncd-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Conflicts: syncd-rpc-dbg, syncd-vs
+Depends:
+    syncd (= ${binary:Version}),
+    ${misc:Depends}
+Description: debugging symbols for syncd
