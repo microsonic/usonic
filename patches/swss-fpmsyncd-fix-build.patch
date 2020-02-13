@@ -1,0 +1,26 @@
+Index: data/sm/sonic-swss/fpmsyncd/fpmlink.cpp
+===================================================================
+--- data.orig/sm/sonic-swss/fpmsyncd/fpmlink.cpp
++++ data/sm/sonic-swss/fpmsyncd/fpmlink.cpp
+@@ -9,7 +9,7 @@
+ using namespace swss;
+ using namespace std;
+ 
+-FpmLink::FpmLink(int port) :
++FpmLink::FpmLink(unsigned short port) :
+     MSG_BATCH_SIZE(256),
+     m_bufSize(FPM_MAX_MSG_LEN * MSG_BATCH_SIZE),
+     m_messageBuffer(NULL),
+Index: data/sm/sonic-swss/fpmsyncd/fpmlink.h
+===================================================================
+--- data.orig/sm/sonic-swss/fpmsyncd/fpmlink.h
++++ data/sm/sonic-swss/fpmsyncd/fpmlink.h
+@@ -19,7 +19,7 @@ namespace swss {
+ class FpmLink : public Selectable {
+ public:
+     const int MSG_BATCH_SIZE;
+-    FpmLink(int port = FPM_DEFAULT_PORT);
++    FpmLink(unsigned short port = FPM_DEFAULT_PORT);
+     virtual ~FpmLink();
+ 
+     /* Wait for connection (blocking) */
