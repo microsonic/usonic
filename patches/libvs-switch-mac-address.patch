@@ -171,3 +171,17 @@ Index: data/sm/sonic-sairedis/vslib/src/sai_vs_switch_common.cpp
 +
 +    return vs_generic_set(SAI_OBJECT_TYPE_SWITCH, ss->getSwitchId(), &attr);
 +}
+Index: data/sm/sonic-sairedis/vslib/inc/sai_vs_switch_common.h
+===================================================================
+--- /dev/null
++++ data/sm/sonic-sairedis/vslib/inc/sai_vs_switch_common.h
+@@ -0,0 +1,9 @@
++#ifndef __SAI_VS_SWITCH_COMMON__
++#define __SAI_VS_SWITCH_COMMON__
++
++#include "sai_vs_state.h"
++#include <memory>
++
++sai_status_t set_switch_mac_address(std::shared_ptr<SwitchState> ss);
++
++#endif // __SAI_VS_SWITCH_COMMON__
