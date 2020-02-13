@@ -1,0 +1,71 @@
+Index: data/sm/sonic-sairedis/configure.ac
+===================================================================
+--- data.orig/sm/sonic-sairedis/configure.ac
++++ data/sm/sonic-sairedis/configure.ac
+@@ -3,7 +3,7 @@ AC_CONFIG_MACRO_DIR([m4])
+ AC_CONFIG_SRCDIR([])
+ AC_CONFIG_AUX_DIR(config)
+ AM_CONFIG_HEADER(config.h)
+-AM_INIT_AUTOMAKE([subdir-objects foreign])
++AM_INIT_AUTOMAKE([subdir-objects foreign serial-tests])
+ AC_LANG_C
+ AC_LANG([C++])
+ AC_PROG_CC
+Index: data/sm/sonic-sairedis/meta/Makefile.am
+===================================================================
+--- data.orig/sm/sonic-sairedis/meta/Makefile.am
++++ data/sm/sonic-sairedis/meta/Makefile.am
+@@ -60,23 +60,27 @@ WARN = \
+ # NOTE: this compilation could be moved to configure.ac
+ 
+ libsaimeta_la_SOURCES =  \
+-					  ../SAI/meta/saimetadata.c \
+-					  ../SAI/meta/saimetadatautils.c \
+-					  ../SAI/meta/saiserialize.c
++					  $(top_srcdir)/SAI/meta/saimetadata.c \
++					  $(top_srcdir)/SAI/meta/saimetadatautils.c \
++					  $(top_srcdir)/SAI/meta/saiserialize.c
+ 
+ libsaimeta_la_CFLAGS = $(DBGFLAGS) $(WARN)
+ 
+-../SAI/meta/saimetadata.h ../SAI/meta/saimetadata.c:
+-	make -C ../SAI/meta
++$(top_srcdir)/SAI/meta/saimetadata.h $(top_srcdir)/SAI/meta/saimetadata.c: saimeta-gen
++
++saimeta-gen:
++	make -C $(top_srcdir)/SAI/meta
+ 
+ clean-local:
+-	make -C ../SAI/meta clean
++	make -C $(top_srcdir)/SAI/meta clean
+ 
+ libsaimetadata_la_SOURCES = \
+ 							sai_meta.cpp \
+ 							saiattributelist.cpp \
+ 							saiserialize.cpp
+ 
++BUILT_SOURCES = $(top_srcdir)/SAI/meta/saimetadata.h $(top_srcdir)/SAI/meta/saimetadata.c
++
+ libsaimetadata_la_CPPFLAGS = $(DBGFLAGS) $(AM_CPPFLAGS) $(CFLAGS_COMMON)
+ libsaimetadata_la_LIBADD = -lhiredis -lswsscommon libsaimeta.la
+ 
+@@ -84,6 +88,6 @@ bin_PROGRAMS = tests
+ 
+ tests_SOURCES = tests.cpp
+ tests_CPPFLAGS = $(DBGFLAGS) $(AM_CPPFLAGS) $(CFLAGS_COMMON)
+-tests_LDADD = -lhiredis -lswsscommon -lpthread -L$(top_dir)/meta/.libs -lsaimetadata -lsaimeta
++tests_LDADD = -lhiredis -lswsscommon -lpthread libsaimetadata.la libsaimeta.la
+ 
+ TESTS = tests
+Index: data/sm/sonic-sairedis/vslib/src/Makefile.am
+===================================================================
+--- data.orig/sm/sonic-sairedis/vslib/src/Makefile.am
++++ data/sm/sonic-sairedis/vslib/src/Makefile.am
+@@ -66,6 +66,6 @@ bin_PROGRAMS = tests
+ 
+ tests_SOURCES = tests.cpp
+ tests_CPPFLAGS = $(DBGFLAGS) $(AM_CPPFLAGS) $(CFLAGS_COMMON)
+-tests_LDADD = -lhiredis -lswsscommon -lpthread -L$(top_srcdir)/vslib/src/.libs -lsaivs -L$(top_srcdir)/meta/.libs -lsaimetadata -lsaimeta
++tests_LDADD = -lhiredis -lswsscommon -lpthread libsaivs.la $(top_srcdir)/meta/libsaimetadata.la $(top_srcdir)/meta/libsaimeta.la
+ 
+ TESTS = tests

@@ -1,3 +1,9 @@
-0001-orchagent-avoid-non-null-terminated-string-stored-in.patch
+debian-compat.patch
+sonic-sairedis-debian-compat.patch
 0001-syncd-fix-sending-invalid-notification-message.patch
 libvs-switch-mac-address.patch
+swss-common-json.patch
+update-meta-files-for-new-gcc-perl.patch
+swss-fpmsyncd-fix-build.patch
+swss-orchagent-copporch-fix-build.patch
+swss-orchagent-vxlan-vnet-fix-build.patch

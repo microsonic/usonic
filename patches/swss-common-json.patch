@@ -1,0 +1,12 @@
+Index: data/sm/sonic-swss-common/common/json.hpp
+===================================================================
+--- data.orig/sm/sonic-swss-common/common/json.hpp
++++ data/sm/sonic-swss-common/common/json.hpp
+@@ -40,6 +40,7 @@ Licensed under the MIT License <http://o
+     #pragma GCC diagnostic ignored "-Wfloat-equal"
+     #pragma GCC diagnostic ignored "-Wconversion"
+     #pragma GCC diagnostic ignored "-Wswitch-default"
++    #pragma GCC diagnostic ignored "-Wshadow"
+ #endif
+ 
+ /*!
