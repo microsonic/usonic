@@ -1,11 +1,8 @@
 on:
-    push:
-        branches:
-        - master
-        - 201904
     pull_request:
         branches:
         - master
+        - 201811
         - 201904
 jobs:
     build:
@@ -17,3 +14,18 @@ jobs:
         - uses: actions/checkout@v2
         - run: git submodule update --init --recursive
         - run: make
+        - run: make docker-run-image
+          env:
+              DOCKER_RUN_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic
+        - run: make docker-debug-image
+          env:
+              DOCKER_RUN_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic
+              DOCKER_DEBUG_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic-debug
+        - run: make
+        - run: make docker-run-image
+          env:
+              DOCKER_RUN_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic
+        - run: make docker-debug-image
+          env:
+              DOCKER_RUN_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic
+              DOCKER_DEBUG_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic-debug
