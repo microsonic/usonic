@@ -1,0 +1,22 @@
+  
+Index: data/sm/sonic-sairedis/debian/compat
+===================================================================
+--- data.orig/sm/sonic-sairedis/debian/compat
++++ data/sm/sonic-sairedis/debian/compat
+@@ -1 +1 @@
+-9
++10
+Index: data/sm/sonic-swss-common/debian/compat
+===================================================================
+--- data.orig/sm/sonic-swss-common/debian/compat
++++ data/sm/sonic-swss-common/debian/compat
+@@ -1 +1 @@
+-9
++10
+Index: data/sm/sonic-swss/debian/compat
+===================================================================
+--- data.orig/sm/sonic-swss/debian/compat
++++ data/sm/sonic-swss/debian/compat
+@@ -1 +1 @@
+-9
++10
