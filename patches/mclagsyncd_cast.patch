@@ -1,0 +1,13 @@
+Index: usonic/sm/sonic-swss/mclagsyncd/mclaglink.cpp
+===================================================================
+--- usonic.orig/sm/sonic-swss/mclagsyncd/mclaglink.cpp
++++ usonic/sm/sonic-swss/mclagsyncd/mclaglink.cpp
+@@ -610,7 +610,7 @@ MclagLink::MclagLink(int port) :
+ 
+     memset(&addr, 0, sizeof(addr));
+     addr.sin_family = AF_INET;
+-    addr.sin_port = htons(port);
++    addr.sin_port = htons((uint16_t)port);
+     addr.sin_addr.s_addr = htonl(MCLAG_DEFAULT_IP);
+ 
+     if (bind(m_server_socket, (struct sockaddr *)&addr, sizeof(addr)) < 0)

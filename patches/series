@@ -1,3 +1,2 @@
+mclagsyncd_cast.patch
 0001-orchagent-avoid-non-null-terminated-string-stored-in.patch
-0001-syncd-fix-sending-invalid-notification-message.patch
-libvs-switch-mac-address.patch
