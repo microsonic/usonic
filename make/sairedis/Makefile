@@ -7,6 +7,7 @@ all: step1 step2
 step1:
 	cp control.1 $(SAIREDIS_DIR)/debian/control
 	cp rules.1 $(SAIREDIS_DIR)/debian/rules
+	rm -rf $(SAIREDIS_DIR)/Makefile # avoid error : /root/sm/sonic-sairedis/config/missing: No such file or directory
 	cd $(SAIREDIS_DIR) && dpkg-buildpackage -us -uc -b && cd ../ && dpkg -i *.deb && cp *.deb /tmp/
 	patchelf --set-soname libsai.so /usr/lib/x86_64-linux-gnu/libsaivs.so.0.0.0
 	cd /usr/lib/x86_64-linux-gnu/ && ln -s libsaivs.so libsai.so
@@ -17,4 +18,5 @@ step2:
 	cp control.2 $(SAIREDIS_DIR)/debian/control
 	cp rules.2 $(SAIREDIS_DIR)/debian/rules
 	cp syncd.install $(SAIREDIS_DIR)/debian/syncd.install
+	rm -rf $(SAIREDIS_DIR)/Makefile # avoid error : /root/sm/sonic-sairedis/config/missing: No such file or directory
 	cd $(SAIREDIS_DIR) && dpkg-buildpackage -us -uc -b && cd ../ && dpkg -i *.deb && cp *.deb /tmp/
