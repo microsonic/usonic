@@ -7,3 +7,12 @@
 [submodule "sm/sonic-swss"]
 	path = sm/sonic-swss
 	url = https://github.com/Azure/sonic-swss.git
+[submodule "sm/sonic-utilities"]
+	path = sm/sonic-utilities
+	url = https://github.com/Azure/sonic-utilities.git
+[submodule "sm/sonic-buildimage"]
+	path = sm/sonic-buildimage
+	url = https://github.com/Azure/sonic-buildimage.git
+[submodule "sm/sonic-py-swsssdk"]
+	path = sm/sonic-py-swsssdk
+	url = https://github.com/Azure/sonic-py-swsssdk.git
