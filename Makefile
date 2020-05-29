@@ -30,7 +30,7 @@ ifndef USONIC_CLI_IMAGE
     USONIC_CLI_IMAGE=usonic-cli
 endif
 
-all: swss-common sairedis swss run-image debug-image
+all: swss-common sairedis swss run-image debug-image cli
 
 cli:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_BUILD_OPTION) -f docker/cli.Dockerfile \
