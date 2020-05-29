@@ -9,20 +9,9 @@ jobs:
         runs-on: ubuntu-latest
         steps:
         - uses: actions/checkout@v2
-        - run: git submodule update --init --recursive
-        - run: make
-        - run: make docker-run-image
+        - run: git submodule update --init --recursive sm/sonic-py-swsssdk sm/sonic-sairedis sm/sonic-swss sm/sonic-swss-common sm/sonic-utilities
+        - run: git submodule update --init sm/sonic-buildimage
+        - run: make all
           env:
-              DOCKER_RUN_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic
-        - run: make docker-debug-image
-          env:
-              DOCKER_RUN_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic
-              DOCKER_DEBUG_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic-debug
-        - run: make
-        - run: make docker-run-image
-          env:
-              DOCKER_RUN_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic
-        - run: make docker-debug-image
-          env:
-              DOCKER_RUN_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic
-              DOCKER_DEBUG_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic-debug
+              USONIC_RUN_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic
+              USONIC_DEBUG_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic-debug
