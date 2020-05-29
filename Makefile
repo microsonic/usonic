@@ -26,7 +26,15 @@ ifndef USONIC_SWSS_IMAGE
     USONIC_SWSS_IMAGE=usonic-swss
 endif
 
+ifndef USONIC_CLI_IMAGE
+    USONIC_CLI_IMAGE=usonic-cli
+endif
+
 all: swss-common sairedis swss run-image debug-image
+
+cli:
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_BUILD_OPTION) -f docker/cli.Dockerfile \
+							      -t $(USONIC_CLI_IMAGE):$(USONIC_IMAGE_TAG) .
 
 swss-common:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_BUILD_OPTION) -f docker/build-swss-common.Dockerfile \
@@ -58,7 +66,7 @@ debug-image:
 							      -t $(USONIC_DEBUG_IMAGE):$(USONIC_IMAGE_TAG) .
 
 run:
-	kubectl delete pods --force --grace-period=0 --timeout=0 usonic
+	-kubectl delete pods --force --grace-period=0 --timeout=0 usonic
 	kubectl create -f ./files/usonic.yaml
 
 bash:
