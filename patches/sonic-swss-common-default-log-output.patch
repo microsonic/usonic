@@ -1,0 +1,13 @@
+Index: usonic/sm/sonic-swss-common/common/logger.cpp
+===================================================================
+--- usonic.orig/sm/sonic-swss-common/common/logger.cpp
++++ usonic/sm/sonic-swss-common/common/logger.cpp
+@@ -139,7 +139,7 @@ void Logger::linkToDbWithOutput(const st
+ 
+ void Logger::linkToDb(const std::string &dbName, const PriorityChangeNotify& prioNotify, const std::string& defPrio)
+ {
+-    linkToDbWithOutput(dbName, prioNotify, defPrio, swssOutputNotify, "SYSLOG");
++    linkToDbWithOutput(dbName, prioNotify, defPrio, swssOutputNotify, "STDERR");
+ }
+ 
+ void Logger::linkToDbNative(const std::string &dbName)
