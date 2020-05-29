@@ -2,37 +2,67 @@ ifndef DOCKER_CMD
     DOCKER_CMD=bash
 endif
 
-ifndef DOCKER_IMAGE_TAG
-    DOCKER_IMAGE_TAG=latest
+ifndef USONIC_IMAGE_TAG
+    USONIC_IMAGE_TAG=latest
 endif
 
-ifndef DOCKER_IMAGE
-    DOCKER_IMAGE=usonic-builder
+ifndef USONIC_RUN_IMAGE
+    USONIC_RUN_IMAGE=usonic
 endif
 
-ifndef DOCKER_RUN_IMAGE
-    DOCKER_RUN_IMAGE=usonic
+ifndef USONIC_DEBUG_IMAGE
+    USONIC_DEBUG_IMAGE=usonic-debug
 endif
 
-ifndef DOCKER_DEBUG_IMAGE
-    DOCKER_DEBUG_IMAGE=usonic-debug
+ifndef USONIC_SWSS_COMMON_IMAGE
+    USONIC_SWSS_COMMON_IMAGE=usonic-swss-common
 endif
 
-docker-image:
-	DOCKER_BUILDKIT=1 docker build $(DOCKER_BUILD_OPTION) -f docker/build.Dockerfile -t $(DOCKER_IMAGE):$(DOCKER_IMAGE_TAG) .
+ifndef USONIC_SAIREDIS_IMAGE
+    USONIC_SAIREDIS_IMAGE=usonic-sairedis
+endif
 
-docker-run-image:
-	DOCKER_BUILDKIT=1 docker build --build-arg USONIC_BUILDER_IMAGE=$(DOCKER_IMAGE):$(DOCKER_IMAGE_TAG) $(DOCKER_BUILD_OPTION) -f docker/run.Dockerfile -t $(DOCKER_RUN_IMAGE):$(DOCKER_IMAGE_TAG) .
+ifndef USONIC_SWSS_IMAGE
+    USONIC_SWSS_IMAGE=usonic-swss
+endif
 
-docker-debug-image:
-	docker images
-	DOCKER_BUILDKIT=1 docker build --build-arg USONIC_IMAGE=$(DOCKER_RUN_IMAGE):$(DOCKER_IMAGE_TAG) $(DOCKER_BUILD_OPTION) -f docker/debug.Dockerfile -t $(DOCKER_DEBUG_IMAGE):$(DOCKER_IMAGE_TAG) .
+all: swss-common sairedis swss run-image debug-image
 
-install:
-	
+swss-common:
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_BUILD_OPTION) -f docker/build-swss-common.Dockerfile \
+							      -t $(USONIC_SWSS_COMMON_IMAGE):$(USONIC_IMAGE_TAG) .
+
+sairedis:
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_BUILD_OPTION) --build-arg USONIC_SWSS_COMMON_IMAGE=$(USONIC_SWSS_COMMON_IMAGE):$(USONIC_IMAGE_TAG) \
+							      -f docker/build-sairedis.Dockerfile \
+							      -t $(USONIC_SAIREDIS_IMAGE):$(USONIC_IMAGE_TAG) .
+
+swss:
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_BUILD_OPTION) --build-arg USONIC_SWSS_COMMON_IMAGE=$(USONIC_SWSS_COMMON_IMAGE):$(USONIC_IMAGE_TAG) \
+							      --build-arg USONIC_SAIREDIS_IMAGE=$(USONIC_SAIREDIS_IMAGE):$(USONIC_IMAGE_TAG) \
+							      -f docker/build-swss.Dockerfile \
+							      -t $(USONIC_SWSS_IMAGE):$(USONIC_IMAGE_TAG) .
+
+run-image:
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_BUILD_OPTION) --build-arg USONIC_SWSS_COMMON_IMAGE=$(USONIC_SWSS_COMMON_IMAGE):$(USONIC_IMAGE_TAG) \
+							      --build-arg USONIC_SAIREDIS_IMAGE=$(USONIC_SAIREDIS_IMAGE):$(USONIC_IMAGE_TAG) \
+							      --build-arg USONIC_SWSS_IMAGE=$(USONIC_SWSS_IMAGE):$(USONIC_IMAGE_TAG) \
+							      -f docker/run.Dockerfile \
+							      -t $(USONIC_RUN_IMAGE):$(USONIC_IMAGE_TAG) .
+
+debug-image:
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_BUILD_OPTION) --build-arg USONIC_SWSS_COMMON_IMAGE=$(USONIC_SWSS_COMMON_IMAGE):$(USONIC_IMAGE_TAG) \
+							      --build-arg USONIC_SAIREDIS_IMAGE=$(USONIC_SAIREDIS_IMAGE):$(USONIC_IMAGE_TAG) \
+							      --build-arg USONIC_SWSS_IMAGE=$(USONIC_SWSS_IMAGE):$(USONIC_IMAGE_TAG) \
+							      -f docker/debug.Dockerfile \
+							      -t $(USONIC_DEBUG_IMAGE):$(USONIC_IMAGE_TAG) .
+
+run:
+	kubectl delete pods --force --grace-period=0 --timeout=0 usonic
+	kubectl create -f ./files/usonic.yaml
 
 bash:
 	$(MAKE) cmd
 
 cmd:
-	docker run -it -v `pwd`:/data -w /data --privileged --rm $(DOCKER_IMAGE) $(DOCKER_CMD)
+	docker run -it -v `pwd`:/data -w /data --privileged --rm $(USONIC_DEBUG_IMAGE) $(DOCKER_CMD)
