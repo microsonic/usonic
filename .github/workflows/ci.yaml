@@ -18,3 +18,4 @@ jobs:
           env:
               USONIC_RUN_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic
               USONIC_DEBUG_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic-debug
+              USONIC_CLI_IMAGE: ${{ secrets.DOCKER_USERNAME}}/usonic-cli
