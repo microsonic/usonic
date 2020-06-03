@@ -9,25 +9,19 @@ jobs:
         runs-on: ubuntu-latest
         steps:
         - uses: actions/checkout@v2
-        - run: git submodule update --init --recursive
+        - run: git submodule update --init --recursive sm/sonic-py-swsssdk sm/sonic-sairedis sm/sonic-swss sm/sonic-swss-common sm/sonic-utilities
+        - run: git submodule update --init sm/sonic-buildimage
         - run: |
             import os
             ref = os.environ['GITHUB_REF']
             branch = ref[11:]
             print("::set-env name=DOCKER_IMAGE_TAG::{}".format('latest' if branch == 'master' else branch))
           shell: python
-        - run: make
+        - run: make all
           env:
               DOCKER_IMAGE_TAG: ${{ env.DOCKER_IMAGE_TAG }}
-        - run: make docker-run-image
-          env:
-              DOCKER_IMAGE_TAG: ${{ env.DOCKER_IMAGE_TAG }}
-              DOCKER_RUN_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic
-        - run: make docker-debug-image
-          env:
-              DOCKER_IMAGE_TAG: ${{ env.DOCKER_IMAGE_TAG }}
-              DOCKER_RUN_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic
-              DOCKER_DEBUG_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic-debug
+              USONIC_RUN_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic
+              USONIC_DEBUG_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic-debug
         - name: Publish Docker image
           uses: ./.github/actions/publish-docker-image
           with:
