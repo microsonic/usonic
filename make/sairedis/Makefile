@@ -9,7 +9,8 @@ step1:
 	cp rules.1 $(SAIREDIS_DIR)/debian/rules
 	cd $(SAIREDIS_DIR) && dpkg-buildpackage -us -uc -b && cd ../ && dpkg -i *.deb && cp *.deb /tmp/
 	patchelf --set-soname libsai.so /usr/lib/x86_64-linux-gnu/libsaivs.so.0.0.0
-	cd /usr/lib/x86_64-linux-gnu/ && ln -sf libsaivs.so libsai.so
+	cd /usr/lib/x86_64-linux-gnu/ && ln -s libsaivs.so libsai.so
+	-$(MAKE) -C $(SAIREDIS_DIR)/syncd clean # clean up syncd-vs build in step1 ( TODO: use dh_auto_clean? )
 
 # step2 builds the syncd package without VS option enabled
 # the syncd executable links to libsai.so which is actually libsaivs.so
