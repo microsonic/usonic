@@ -5,7 +5,7 @@ on:
         - 201811
         - 201904
 jobs:
-    build:
+    ci:
         runs-on: ubuntu-latest
         steps:
         - uses: actions/checkout@v2
@@ -13,6 +13,64 @@ jobs:
         - run: git submodule update --init sm/sonic-buildimage
         - run: make all
           env:
+              USONIC_IMAGE_TAG: latest
               USONIC_RUN_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic
               USONIC_DEBUG_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic-debug
               USONIC_CLI_IMAGE: ${{ secrets.DOCKER_USERNAME}}/usonic-cli
+        - name: export usonic image
+          run: docker save ${{ secrets.DOCKER_USERNAME }}/usonic > usonic.tar
+        - name: export usonic-debug image
+          run: docker save ${{ secrets.DOCKER_USERNAME }}/usonic-debug > usonic-debug.tar
+        - name: export usonic-cli image
+          run: docker save ${{ secrets.DOCKER_USERNAME }}/usonic-cli > usonic-cli.tar
+        - name: upload container images
+          uses: actions/upload-artifact@v2
+          with:
+              name: images
+              path: ./*.tar
+    k3s:
+        needs: ci
+        runs-on: ubuntu-latest
+        steps:
+        - uses: actions/checkout@v2
+        - name: setup local image registry
+          run: docker run -d -p 5000:5000 --restart=always --name registry registry:2
+        - name: setup k3s registry configuration
+          run: |
+              sudo mkdir -p /etc/rancher/k3s
+              cat << EOF | sudo tee /etc/rancher/k3s/registries.yaml
+              mirrors:
+                  docker.io:
+                    endpoint:
+                    - "http://localhost:5000"
+              EOF
+        - name: setup k3s
+          run: |
+              curl -sfL https://get.k3s.io | sh -
+        - name: set kubeconfig
+          env:
+            KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+          run: sudo mkdir ~/.kube && sudo cp ${KUBECONFIG} ~/.kube/config
+
+        - uses: actions/download-artifact@v2
+          with:
+              name: images
+        - name: load container images
+          run: |
+            for image in $(ls ./*.tar)
+            do
+                docker load < $image
+            done
+        - name: push container images to local registry
+          run: |
+            for name in usonic-debug usonic-cli
+            do
+              docker tag ${{ secrets.DOCKER_USERNAME}}/${name} localhost:5000/${{ secrets.DOCKER_USERNAME}}/${name}
+              docker push localhost:5000/${{ secrets.DOCKER_USERNAME}}/${name}
+            done
+        - name: test k3s
+          run: |
+              sleep 10
+              sudo kubectl get nodes
+              sudo kubectl get pod -A
+        - run: sudo kubectl run usonic --wait --image docker.io/${{ secrets.DOCKER_USERNAME}}/usonic-debug --restart=Never --command -- syncd -h
