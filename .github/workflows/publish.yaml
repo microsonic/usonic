@@ -20,27 +20,34 @@ jobs:
         - run: make all
           env:
               DOCKER_IMAGE_TAG: ${{ env.DOCKER_IMAGE_TAG }}
-              USONIC_RUN_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic
-              USONIC_DEBUG_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic-debug
-              USONIC_CLI_IMAGE: ${{ secrets.DOCKER_USERNAME}}/usonic-cli
         - name: Publish Docker image
           uses: ./.github/actions/publish-docker-image
           with:
-              name: ${{ secrets.DOCKER_USERNAME }}/usonic
+              name: docker.io/microsonic/usonic
               username: ${{ secrets.DOCKER_USERNAME }}
               password: ${{ secrets.DOCKER_PASSWORD }}
               tags: ${{ env.DOCKER_IMAGE_TAG }}
         - name: Publish Docker image for debugging
           uses: ./.github/actions/publish-docker-image
           with:
-              name: ${{ secrets.DOCKER_USERNAME }}/usonic-debug
+              name: docker.io/microsonic/usonic-debug
               username: ${{ secrets.DOCKER_USERNAME }}
               password: ${{ secrets.DOCKER_PASSWORD }}
               tags: ${{ env.DOCKER_IMAGE_TAG }}
         - name: Publish Docker image for SONiC CLI
           uses: ./.github/actions/publish-docker-image
           with:
-              name: ${{ secrets.DOCKER_USERNAME }}/usonic-cli
+              name: docker.io/microsonic/usonic-cli
               username: ${{ secrets.DOCKER_USERNAME }}
               password: ${{ secrets.DOCKER_PASSWORD }}
               tags: ${{ env.DOCKER_IMAGE_TAG }}
+        - run: docker login https://docker.pkg.github.com -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+        - run: docker tag microsonic/usonic:${{ env.DOCKER_IMAGE_TAG }} docker.pkg.github.com/microsonic/usonic/usonic:${{ env.DOCKER_IMAGE_TAG }}
+        - name: Publish Docker image to Github Package
+          run: docker push docker.pkg.github.com/microsonic/usonic/usonic:${{ env.DOCKER_IMAGE_TAG }}
+        - run: docker tag microsonic/usonic-debug:${{ env.DOCKER_IMAGE_TAG }} docker.pkg.github.com/microsonic/usonic/usonic-debug:${{ env.DOCKER_IMAGE_TAG }}
+        - name: Publish Docker image to Github Package
+          run: docker push docker.pkg.github.com/microsonic/usonic/usonic-debug:${{ env.DOCKER_IMAGE_TAG }}
+        - run: docker tag microsonic/usonic-cli:${{ env.DOCKER_IMAGE_TAG }} docker.pkg.github.com/microsonic/usonic/usonic-cli:${{ env.DOCKER_IMAGE_TAG }}
+        - name: Publish Docker image to Github Package
+          run: docker push docker.pkg.github.com/microsonic/usonic/usonic-cli:${{ env.DOCKER_IMAGE_TAG }}
