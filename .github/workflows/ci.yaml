@@ -15,7 +15,3 @@ jobs:
         - run: git submodule update --init --recursive sm/sonic-py-swsssdk sm/sonic-sairedis sm/sonic-swss sm/sonic-swss-common sm/sonic-utilities
         - run: git submodule update --init sm/sonic-buildimage
         - run: make all
-          env:
-              USONIC_RUN_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic
-              USONIC_DEBUG_IMAGE: ${{ secrets.DOCKER_USERNAME }}/usonic-debug
-              USONIC_CLI_IMAGE: ${{ secrets.DOCKER_USERNAME}}/usonic-cli
