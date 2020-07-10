@@ -4,14 +4,30 @@ on:
         - master
         - 201811
         - 201904
+env:
+    K: sudo k3s kubectl
 jobs:
     build:
         runs-on: ubuntu-latest
         steps:
         - uses: crazy-max/ghaction-docker-buildx@v1
-          with:
-              version: latest
+        - name: install k3s
+          run: curl -sfL https://get.k3s.io | sh -s - --docker
         - uses: actions/checkout@v2
         - run: git submodule update --init --recursive sm/sonic-py-swsssdk sm/sonic-sairedis sm/sonic-swss sm/sonic-swss-common sm/sonic-utilities
         - run: git submodule update --init sm/sonic-buildimage
         - run: make all
+        - run: |
+            $K create -f ./k8s
+            while [ true ]
+            do
+                sleep 10
+                $K get pods || true
+                ($K exec usonic-cli -- show interface status | grep Ethernet1) && exit 0 || true
+            done
+        - run: |
+            $K exec usonic-cli -- show interface status
+            $K exec usonic-cli -- config vlan add 1000
+            $K exec usonic-cli -- config vlan member add 1000 Ethernet1 -u
+            $K exec usonic-cli -- config vlan member add 1000 Ethernet2 -u
+            $K exec usonic-cli -- show vlan brief
