@@ -2,3 +2,4 @@ sonic-swss-common-db-config.patch
 sonic-swss-common-default-log-output.patch
 mclagsyncd_cast.patch
 0001-orchagent-avoid-non-null-terminated-string-stored-in.patch
+sonic_mgmt_framework_copy_ocbinds.patch
