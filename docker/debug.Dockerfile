@@ -21,4 +21,5 @@ RUN --mount=type=bind,from=sairedis,target=/tmp cp /tmp/usr/lib/x86_64-linux-gnu
 RUN cd /usr/lib/x86_64-linux-gnu/ && ln -s libsaivs.so libsai.so
 
 RUN --mount=type=bind,from=swss,source=/tmp,target=/tmp dpkg -i /tmp/*.deb
+RUN --mount=type=bind,from=mgmt_framework,source=/tmp,target=/tmp dpkg -i /tmp/*.deb
 

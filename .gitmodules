@@ -16,3 +16,9 @@
 [submodule "sm/sonic-py-swsssdk"]
 	path = sm/sonic-py-swsssdk
 	url = https://github.com/Azure/sonic-py-swsssdk.git
+[submodule "sm/sonic-mgmt-framework"]
+	path = sm/sonic-mgmt-framework
+	url = https://github.com/Azure/sonic-mgmt-framework.git
+[submodule "sm/sonic-mgmt-common"]
+	path = sm/sonic-mgmt-common
+	url = https://github.com/Azure/sonic-mgmt-common.git
