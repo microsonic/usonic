@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+    name: sonic-mgmt
+    labels:
+        app: sonic-mgmt
+spec:
+    containers:
+    - name: mgmt
+      image: docker.io/microsonic/usonic-debug:latest
+      imagePullPolicy: IfNotPresent
+      command: ["rest_server", "-no-tls"]
+      env:
+      - name: CVL_REDIS_HOST
+        value: "redis.default.svc.cluster.local:6379"

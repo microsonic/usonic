@@ -1,12 +1,23 @@
 # syntax=docker/dockerfile:experimental
-ARG USONIC_MGMT_FRAMEWORK_IMAGE=usonic-mgmt-framework:latest
-
-FROM ${USONIC_MGMT_FRAMEWORK_IMAGE} as mgmt_framework 
-
-FROM debian:buster
+FROM debian:buster as builder
 
 RUN --mount=type=cache,target=/var/cache/apt --mount=type=cache,target=/var/lib/apt \
-apt update && apt install -qy make g++ graphviz autotools-dev autoconf doxygen libnl-3-dev libnl-genl-3-dev libnl-route-3-dev libnl-nf-3-dev libhiredis-dev perl libxml-simple-perl aspell swig libgtest-dev dh-exec debhelper libtool pkg-config python3-all python-all libpython3-dev libpython-dev quilt patchelf libboost-dev m4 libxml2-utils xsltproc python-lxml libexpat1-dev
+apt update && apt install -qy make autotools-dev autoconf dh-exec debhelper libtool pkg-config m4 libxml2-utils xsltproc python-lxml libexpat1-dev python rsync wget default-jdk libxml2-dev git cmake gcc libpcre3-dev python-pip quilt python3 python3-pip devscripts
 
-RUN --mount=type=bind,source=/tmp,target=/tmp,from=mgmt_framework dpkg -i /tmp/*.deb
-RUN --mount=type=bind,target=/root,rw cd /root && quilt push -a && make -C /root/make/mgmt-framework
+# remove libyang plugin library since debian package is broken
+# TODO fix this
+RUN --mount=type=tmpfs,target=/src cd /src && git clone https://github.com/CESNET/libyang.git && \
+            sed -i -e '/usr\/lib\/\*\/libyang1/d' libyang/packages/debian.libyang.install && \
+            cmake /src/libyang && make build-deb && cp -r debs/*.deb /tmp/ && make install
+
+RUN --mount=type=tmpfs,target=/tmp cd /tmp && wget -O go.tar.gz https://golang.org/dl/go1.14.4.linux-amd64.tar.gz && tar -C /usr/local -xzf go.tar.gz
+
+RUN pip install pyang pyyaml
+
+RUN pip3 install jinja2
+
+RUN --mount=type=bind,source=sm/sonic-mgmt-common,target=/root/sm/sonic-mgmt-common,rw \
+    --mount=type=bind,source=sm/sonic-mgmt-framework,target=/root/sm/sonic-mgmt-framework,rw \
+    --mount=type=bind,source=patches/mgmt,target=/root/patches \
+    --mount=type=bind,source=make,target=/root/make \
+    cd /root && quilt push -a && make -C /root/make/mgmt-framework

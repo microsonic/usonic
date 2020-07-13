@@ -1,0 +1,86 @@
+Index: usonic/sm/sonic-mgmt-framework/rest/main/main.go
+===================================================================
+--- usonic.orig/sm/sonic-mgmt-framework/rest/main/main.go
++++ usonic/sm/sonic-mgmt-framework/rest/main/main.go
+@@ -30,8 +30,8 @@ import (
+ 	"os/signal"
+ 	"syscall"
+ 
+-	"github.com/Azure/sonic-mgmt-framework/rest/server"
+ 	"github.com/Azure/sonic-mgmt-framework/build/rest_server/dist/swagger"
++	"github.com/Azure/sonic-mgmt-framework/rest/server"
+ 	"github.com/golang/glog"
+ 	"github.com/pkg/profile"
+ )
+@@ -44,6 +44,7 @@ var (
+ 	keyFile    string // Server private key file path
+ 	caFile     string // Client CA certificate file path
+ 	clientAuth string // Client auth mode
++	noTLS      bool   // Disable TLS
+ )
+ 
+ func init() {
+@@ -54,6 +55,7 @@ func init() {
+ 	flag.StringVar(&keyFile, "key", "", "Server private key file path")
+ 	flag.StringVar(&caFile, "cacert", "", "CA certificate for client certificate validation")
+ 	flag.StringVar(&clientAuth, "client_auth", "none", "Client auth mode - none|cert|user")
++	flag.BoolVar(&noTLS, "no-tls", false, "Disable TLS")
+ 	flag.Parse()
+ 	// Suppress warning messages related to logging before flag parse
+ 	flag.CommandLine.Parse([]string{})
+@@ -89,31 +91,40 @@ func main() {
+ 
+ 	router := server.NewRouter()
+ 
+-	address := fmt.Sprintf(":%d", port)
+-
+-	// Prepare TLSConfig from the parameters
+-	tlsConfig := tls.Config{
+-		ClientAuth:               getTLSClientAuthType(),
+-		Certificates:             prepareServerCertificate(),
+-		ClientCAs:                prepareCACertificates(),
+-		MinVersion:               tls.VersionTLS12,
+-		CurvePreferences:         getPreferredCurveIDs(),
+-		PreferServerCipherSuites: true,
+-		CipherSuites:             getPreferredCipherSuites(),
++	if noTLS && port == 443 {
++		port = 80
+ 	}
+ 
++	address := fmt.Sprintf(":%d", port)
++
+ 	// Prepare HTTPS server
+ 	restServer := &http.Server{
+-		Addr:      address,
+-		Handler:   router,
+-		TLSConfig: &tlsConfig,
++		Addr:    address,
++		Handler: router,
++	}
++
++	if !noTLS {
++		// Prepare TLSConfig from the parameters
++		restServer.TLSConfig = &tls.Config{
++			ClientAuth:               getTLSClientAuthType(),
++			Certificates:             prepareServerCertificate(),
++			ClientCAs:                prepareCACertificates(),
++			MinVersion:               tls.VersionTLS12,
++			CurvePreferences:         getPreferredCurveIDs(),
++			PreferServerCipherSuites: true,
++			CipherSuites:             getPreferredCipherSuites(),
++		}
+ 	}
+ 
+ 	glog.Infof("Server started on %v", address)
+ 	glog.Infof("UI directory is %v", uiDir)
+ 
+ 	// Start HTTPS server
+-	glog.Fatal(restServer.ListenAndServeTLS("", ""))
++	if noTLS {
++		glog.Fatal(restServer.ListenAndServe())
++	} else {
++		glog.Fatal(restServer.ListenAndServeTLS("", ""))
++	}
+ }
+ 
+ // prepareServerCertificate function parses --cert and --key parameter
