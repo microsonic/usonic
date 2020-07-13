@@ -1,0 +1,22 @@
+Index: usonic/sm/sonic-mgmt-common/debian/control
+===================================================================
+--- usonic.orig/sm/sonic-mgmt-common/debian/control
++++ usonic/sm/sonic-mgmt-common/debian/control
+@@ -1,7 +1,6 @@
+ Source: sonic-mgmt-common
+ Maintainer: Sachin Holla <sachin.holla@broadcom.com>
+ Build-Depends: debhelper (>= 8.0.0),
+-               dh-systemd
+ Vcs-Git: https://github.com/Azure/sonic-mgmt-common
+ Homepage: https://github.com/Azure/SONiC/
+ Standards-Version: 3.9.3
+Index: usonic/sm/sonic-mgmt-common/debian/rules
+===================================================================
+--- usonic.orig/sm/sonic-mgmt-common/debian/rules
++++ usonic/sm/sonic-mgmt-common/debian/rules
+@@ -1,4 +1,4 @@
+ #!/usr/bin/make -f  
+ %:  
+-	dh $@ --with systemd --parallel
++	dh $@ --parallel
+ 

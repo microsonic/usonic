@@ -1,0 +1,5 @@
+sonic_mgmt_framework_copy_ocbinds.patch
+sonic_mgmt_deb.patch
+cvl_redis_host_option.patch
+debian_package.patch
+mgmt_rest_no_tls.patch

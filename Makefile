@@ -64,8 +64,7 @@ swss:
 							      -t $(DOCKER_REPO)/$(USONIC_SWSS_IMAGE):$(USONIC_IMAGE_TAG) .
 
 mgmt-framework:
-	DOCKER_BUILDKIT=1 docker build $(DOCKER_BUILD_OPTION) --build-arg USONIC_MGMT_FRAMEWORK_IMAGE=$(DOCKER_REPO)/$(USONIC_MGMT_FRAMEWORK_IMAGE):$(USONIC_IMAGE_TAG) \
-							      -f docker/build-mgmt-framework.Dockerfile \
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_BUILD_OPTION) -f docker/build-mgmt-framework.Dockerfile \
 							      -t $(DOCKER_REPO)/$(USONIC_MGMT_FRAMEWORK_IMAGE):$(USONIC_IMAGE_TAG) .
 
 run-image:
@@ -92,4 +91,4 @@ bash:
 	$(MAKE) cmd
 
 cmd:
-	docker run -it -v `pwd`:/data -w /data --privileged --rm $(DOCKER_IMAGE) $(DOCKER_CMD)
+	docker run $(DOCKER_RUN_OPTION) -it -v `pwd`:/data -w /data --privileged --rm $(DOCKER_IMAGE) $(DOCKER_CMD)
