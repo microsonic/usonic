@@ -17,7 +17,6 @@ spec:
         mountPath: /etc/redis/
       ports:
       - containerPort: 6379
-      - containerPort: 8888
     volumes:
     - name: redis-sock
       hostPath:
