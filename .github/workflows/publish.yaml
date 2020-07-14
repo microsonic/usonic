@@ -9,7 +9,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
         - uses: actions/checkout@v2
-        - run: git submodule update --init --recursive sm/sonic-py-swsssdk sm/sonic-sairedis sm/sonic-swss sm/sonic-swss-common sm/sonic-utilities
+        - run: git submodule update --init --recursive sm/sonic-py-swsssdk sm/sonic-sairedis sm/sonic-swss sm/sonic-swss-common sm/sonic-utilities sm/sonic-mgmt-common sm/sonic-mgmt-framework
         - run: git submodule update --init sm/sonic-buildimage
         - run: |
             import os
