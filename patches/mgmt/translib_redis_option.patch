@@ -1,0 +1,1383 @@
+Index: usonic/sm/sonic-mgmt-common/translib/db/db.go
+===================================================================
+--- usonic.orig/sm/sonic-mgmt-common/translib/db/db.go
++++ usonic/sm/sonic-mgmt-common/translib/db/db.go
+@@ -108,10 +108,10 @@ import (
+ 	"errors"
+ 	"strings"
+ 
+-	"github.com/go-redis/redis"
+-	"github.com/golang/glog"
+ 	"github.com/Azure/sonic-mgmt-common/cvl"
+ 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
++	"github.com/go-redis/redis"
++	"github.com/golang/glog"
+ )
+ 
+ const (
+@@ -139,7 +139,7 @@ const (
+ 	MaxDB // 7 The Number of DBs
+ )
+ 
+-func(dbNo DBNum) String() string {
++func (dbNo DBNum) String() string {
+ 	return fmt.Sprintf("%d", dbNo)
+ }
+ 
+@@ -150,7 +150,8 @@ type Options struct {
+ 	TableNameSeparator string
+ 	KeySeparator       string
+ 
+-	DisableCVLCheck    bool
++	DisableCVLCheck bool
++	Addr            string
+ }
+ 
+ func (o Options) String() string {
+@@ -198,7 +199,7 @@ type TableSpec struct {
+ 	// CompCt tells how many components in the key. Only the last component
+ 	// can have TableSeparator as part of the key. Otherwise, we cannot
+ 	// tell where the key component begins.
+-	CompCt	int
++	CompCt int
+ }
+ 
+ // Key gives the key components.
+@@ -242,10 +243,10 @@ type Table struct {
+ type _txOp int
+ 
+ const (
+-	txOpNone      _txOp = iota // No Op
+-	txOpHMSet     // key, value gives the field:value to be set in key
+-	txOpHDel      // key, value gives the fields to be deleted in key
+-	txOpDel       // key
++	txOpNone  _txOp = iota // No Op
++	txOpHMSet              // key, value gives the field:value to be set in key
++	txOpHDel               // key, value gives the fields to be deleted in key
++	txOpDel                // key
+ )
+ 
+ type _txCmd struct {
+@@ -260,18 +261,18 @@ type DB struct {
+ 	client *redis.Client
+ 	Opts   *Options
+ 
+-	txState _txState
+-	txCmds  []_txCmd
+-	cv *cvl.CVL
+-	cvlEditConfigData [] cvl.CVLEditConfigData
+-
+-/*
+-	sKeys []*SKey               // Subscribe Key array
+-	sHandler HFunc              // Handler Function
+-	sCh <-chan *redis.Message   // non-Nil implies SubscribeDB
+-*/
+-	sPubSub *redis.PubSub       // PubSub. non-Nil implies SubscribeDB
+-	sCIP bool                   // Close in Progress
++	txState           _txState
++	txCmds            []_txCmd
++	cv                *cvl.CVL
++	cvlEditConfigData []cvl.CVLEditConfigData
++
++	/*
++		sKeys []*SKey               // Subscribe Key array
++		sHandler HFunc              // Handler Function
++		sCh <-chan *redis.Message   // non-Nil implies SubscribeDB
++	*/
++	sPubSub *redis.PubSub // PubSub. non-Nil implies SubscribeDB
++	sCIP    bool          // Close in Progress
+ }
+ 
+ func (d DB) String() string {
+@@ -288,9 +289,14 @@ func NewDB(opt Options) (*DB, error) {
+ 		glog.Info("NewDB: Begin: opt: ", opt)
+ 	}
+ 
++	addr := opt.Addr
++	if addr == "" {
++		addr = DefaultRedisLocalTCPEP
++	}
++
+ 	d := DB{client: redis.NewClient(&redis.Options{
+ 		Network: "tcp",
+-		Addr:    DefaultRedisLocalTCPEP,
++		Addr:    addr,
+ 		//Addr:     DefaultRedisRemoteTCPEP,
+ 		Password: "", /* TBD */
+ 		// DB:       int(4), /* CONFIG_DB DB No. */
+@@ -300,15 +306,15 @@ func NewDB(opt Options) (*DB, error) {
+ 		PoolSize: 1,
+ 		// Each DB gets it own (single) connection.
+ 	}),
+-		Opts:    &opt,
+-		txState: txStateNone,
+-		txCmds:  make([]_txCmd, 0, InitialTxPipelineSize),
++		Opts:              &opt,
++		txState:           txStateNone,
++		txCmds:            make([]_txCmd, 0, InitialTxPipelineSize),
+ 		cvlEditConfigData: make([]cvl.CVLEditConfigData, 0, InitialTxPipelineSize),
+ 	}
+ 
+ 	if d.client == nil {
+ 		glog.Error("NewDB: Could not create redis client")
+-		e = tlerr.TranslibDBCannotOpen { }
++		e = tlerr.TranslibDBCannotOpen{}
+ 		goto NewDBExit
+ 	}
+ 
+@@ -326,7 +332,7 @@ func NewDB(opt Options) (*DB, error) {
+ 	} else if init, _ := d.client.Get(d.Opts.InitIndicator).Int(); init != 1 {
+ 
+ 		glog.Error("NewDB: Database not inited")
+-		e = tlerr.TranslibDBNotInit { }
++		e = tlerr.TranslibDBNotInit{}
+ 		goto NewDBExit
+ 	}
+ 
+@@ -363,9 +369,9 @@ func (d *DB) key2redis(ts *TableSpec, ke
+ 				d.Opts.TableNameSeparator+
+ 				strings.Join(key.Comp, d.Opts.KeySeparator))
+ 	}
+-        return ts.Name +
+-               d.Opts.TableNameSeparator +
+-               strings.Join(key.Comp, d.Opts.KeySeparator)
++	return ts.Name +
++		d.Opts.TableNameSeparator +
++		strings.Join(key.Comp, d.Opts.KeySeparator)
+ }
+ 
+ func (d *DB) redis2key(ts *TableSpec, redisKey string) Key {
+@@ -373,7 +379,7 @@ func (d *DB) redis2key(ts *TableSpec, re
+ 	splitTable := strings.SplitN(redisKey, d.Opts.TableNameSeparator, 2)
+ 
+ 	if ts.CompCt > 0 {
+-		return Key{strings.SplitN(splitTable[1],d.Opts.KeySeparator, ts.CompCt)}
++		return Key{strings.SplitN(splitTable[1], d.Opts.KeySeparator, ts.CompCt)}
+ 	} else {
+ 		return Key{strings.Split(splitTable[1], d.Opts.KeySeparator)}
+ 	}
+@@ -423,7 +429,7 @@ func (d *DB) GetEntry(ts *TableSpec, key
+ 			glog.Info("GetEntry: HGetAll(): empty map")
+ 		}
+ 		// e = errors.New("Entry does not exist")
+-		e = tlerr.TranslibRedisClientEntryNotExist { Entry: d.key2redis(ts, key) }
++		e = tlerr.TranslibRedisClientEntryNotExist{Entry: d.key2redis(ts, key)}
+ 	}
+ 
+ 	if glog.V(3) {
+@@ -493,8 +499,7 @@ func (d *DB) DeleteKeys(ts *TableSpec, k
+ 	return e
+ }
+ 
+-
+-func (d *DB) doCVL(ts * TableSpec, cvlOps []cvl.CVLOperation, key Key, vals []Value) error {
++func (d *DB) doCVL(ts *TableSpec, cvlOps []cvl.CVLOperation, key Key, vals []Value) error {
+ 	var e error = nil
+ 
+ 	var cvlRetCode cvl.CVLRetCode
+@@ -518,11 +523,11 @@ func (d *DB) doCVL(ts * TableSpec, cvlOp
+ 	}
+ 	for i := 0; i < len(cvlOps); i++ {
+ 
+-		cvlEditConfigData := cvl.CVLEditConfigData {
+-				VType: cvl.VALIDATE_ALL,
+-				VOp: cvlOps[i],
+-				Key: d.key2redis(ts, key),
+-				}
++		cvlEditConfigData := cvl.CVLEditConfigData{
++			VType: cvl.VALIDATE_ALL,
++			VOp:   cvlOps[i],
++			Key:   d.key2redis(ts, key),
++		}
+ 
+ 		switch cvlOps[i] {
+ 		case cvl.OP_CREATE, cvl.OP_UPDATE:
+@@ -531,7 +536,7 @@ func (d *DB) doCVL(ts * TableSpec, cvlOp
+ 
+ 		case cvl.OP_DELETE:
+ 			if len(vals[i].Field) == 0 {
+-				cvlEditConfigData.Data = map[string]string {}
++				cvlEditConfigData.Data = map[string]string{}
+ 			} else {
+ 				cvlEditConfigData.Data = vals[i].Field
+ 			}
+@@ -555,15 +560,15 @@ func (d *DB) doCVL(ts * TableSpec, cvlOp
+ 	cei, cvlRetCode = d.cv.ValidateEditConfig(d.cvlEditConfigData)
+ 
+ 	if cvl.CVL_SUCCESS != cvlRetCode {
+-		glog.Error("doCVL: CVL Failure: " , cvlRetCode)
++		glog.Error("doCVL: CVL Failure: ", cvlRetCode)
+ 		// e = errors.New("CVL Failure: " + string(cvlRetCode))
+-		e = tlerr.TranslibCVLFailure { Code: int(cvlRetCode),
+-					CVLErrorInfo: cei }
+-		glog.Error("doCVL: " , len(d.cvlEditConfigData), len(cvlOps))
+-		d.cvlEditConfigData = d.cvlEditConfigData[:len(d.cvlEditConfigData) - len(cvlOps)]
++		e = tlerr.TranslibCVLFailure{Code: int(cvlRetCode),
++			CVLErrorInfo: cei}
++		glog.Error("doCVL: ", len(d.cvlEditConfigData), len(cvlOps))
++		d.cvlEditConfigData = d.cvlEditConfigData[:len(d.cvlEditConfigData)-len(cvlOps)]
+ 	} else {
+ 		for i := 0; i < len(cvlOps); i++ {
+-			d.cvlEditConfigData[len(d.cvlEditConfigData)-1-i].VType = cvl.VALIDATE_NONE;
++			d.cvlEditConfigData[len(d.cvlEditConfigData)-1-i].VType = cvl.VALIDATE_NONE
+ 		}
+ 	}
+ 
+@@ -576,7 +581,7 @@ doCVLExit:
+ 	return e
+ }
+ 
+-func (d *DB) doWrite(ts * TableSpec, op _txOp, key Key, val interface{}) error {
++func (d *DB) doWrite(ts *TableSpec, op _txOp, key Key, val interface{}) error {
+ 	var e error = nil
+ 	var value Value
+ 
+@@ -614,15 +619,15 @@ func (d *DB) doWrite(ts * TableSpec, op
+ 		switch op {
+ 
+ 		case txOpHMSet:
+-			value = Value { Field: make(map[string]string,
+-					len(val.(Value).Field)) }
++			value = Value{Field: make(map[string]string,
++				len(val.(Value).Field))}
+ 			vintf := make(map[string]interface{})
+ 			for k, v := range val.(Value).Field {
+ 				vintf[k] = v
+ 			}
+ 			e = d.client.HMSet(d.key2redis(ts, key), vintf).Err()
+ 
+-			if e!= nil {
++			if e != nil {
+ 				glog.Error("doWrite: HMSet: ", key, " : ", value, " e: ", e)
+ 			}
+ 
+@@ -633,13 +638,13 @@ func (d *DB) doWrite(ts * TableSpec, op
+ 			}
+ 
+ 			e = d.client.HDel(d.key2redis(ts, key), fields...).Err()
+-			if e!= nil {
++			if e != nil {
+ 				glog.Error("doWrite: HDel: ", key, " : ", fields, " e: ", e)
+ 			}
+ 
+ 		case txOpDel:
+ 			e = d.client.Del(d.key2redis(ts, key)).Err()
+-			if e!= nil {
++			if e != nil {
+ 				glog.Error("doWrite: Del: ", key, " : ", e)
+ 			}
+ 
+@@ -690,7 +695,7 @@ doWriteExit:
+ func (d *DB) setEntry(ts *TableSpec, key Key, value Value, isCreate bool) error {
+ 
+ 	var e error = nil
+-	var valueComplement Value = Value { Field: make(map[string]string,len(value.Field))}
++	var valueComplement Value = Value{Field: make(map[string]string, len(value.Field))}
+ 	var valueCurrent Value
+ 
+ 	if glog.V(3) {
+@@ -713,7 +718,7 @@ func (d *DB) setEntry(ts *TableSpec, key
+ 		if e == nil {
+ 			for k, _ := range valueCurrent.Field {
+ 				_, present := value.Field[k]
+-				if ! present {
++				if !present {
+ 					valueComplement.Field[k] = string("")
+ 				}
+ 			}
+@@ -725,17 +730,17 @@ func (d *DB) setEntry(ts *TableSpec, key
+ 			glog.Info("setEntry: DoCVL for UPDATE")
+ 		}
+ 		if len(valueComplement.Field) == 0 {
+-			e = d.doCVL(ts, []cvl.CVLOperation {cvl.OP_UPDATE},
+-					key, []Value { value} )
++			e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_UPDATE},
++				key, []Value{value})
+ 		} else {
+-			e = d.doCVL(ts, []cvl.CVLOperation {cvl.OP_UPDATE, cvl.OP_DELETE},
+-					key, []Value { value, valueComplement} )
++			e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_UPDATE, cvl.OP_DELETE},
++				key, []Value{value, valueComplement})
+ 		}
+ 	} else {
+ 		if glog.V(3) {
+ 			glog.Info("setEntry: DoCVL for CREATE")
+ 		}
+-		e = d.doCVL(ts, []cvl.CVLOperation {cvl.OP_CREATE}, key, []Value { value })
++		e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_CREATE}, key, []Value{value})
+ 	}
+ 
+ 	if e != nil {
+@@ -756,7 +761,7 @@ setEntryExit:
+ }
+ 
+ // CreateEntry creates an entry(row) in the table.
+-func (d * DB) CreateEntry(ts * TableSpec, key Key, value Value) error {
++func (d *DB) CreateEntry(ts *TableSpec, key Key, value Value) error {
+ 
+ 	return d.setEntry(ts, key, value, true)
+ }
+@@ -777,13 +782,13 @@ func (d *DB) DeleteEntry(ts *TableSpec,
+ 	if glog.V(3) {
+ 		glog.Info("DeleteEntry: DoCVL for DELETE")
+ 	}
+-	e = d.doCVL(ts, []cvl.CVLOperation {cvl.OP_DELETE}, key, []Value {Value{}})
++	e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_DELETE}, key, []Value{Value{}})
+ 
+ 	if e == nil {
+ 		e = d.doWrite(ts, txOpDel, key, nil)
+ 	}
+ 
+-	return e;
++	return e
+ }
+ 
+ // ModEntry modifies an entry(row) in the table.
+@@ -805,7 +810,7 @@ func (d *DB) ModEntry(ts *TableSpec, key
+ 	if glog.V(3) {
+ 		glog.Info("ModEntry: DoCVL for UPDATE")
+ 	}
+-	e = d.doCVL(ts, []cvl.CVLOperation {cvl.OP_UPDATE}, key, []Value {value})
++	e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_UPDATE}, key, []Value{value})
+ 
+ 	if e == nil {
+ 		e = d.doWrite(ts, txOpHMSet, key, value)
+@@ -832,7 +837,7 @@ func (d *DB) DeleteEntryFields(ts *Table
+ 		glog.Info("DeleteEntryFields: DoCVL for HDEL")
+ 	}
+ 
+-	e := d.doCVL(ts, []cvl.CVLOperation {cvl.OP_DELETE}, key, []Value{value})
++	e := d.doCVL(ts, []cvl.CVLOperation{cvl.OP_DELETE}, key, []Value{value})
+ 
+ 	if e == nil {
+ 		d.doWrite(ts, txOpHDel, key, value)
+@@ -841,7 +846,6 @@ func (d *DB) DeleteEntryFields(ts *Table
+ 	return e
+ }
+ 
+-
+ // GetTable gets the entire table.
+ func (d *DB) GetTable(ts *TableSpec) (Table, error) {
+ 	if glog.V(3) {
+@@ -1079,13 +1083,13 @@ func (w WatchKeys) String() string {
+ // Convenience function to make TableSpecs from strings.
+ // This only works on Tables having key components without TableSeparator
+ // as part of the key.
+-func Tables2TableSpecs(tables []string) []* TableSpec {
++func Tables2TableSpecs(tables []string) []*TableSpec {
+ 	var tss []*TableSpec
+ 
+ 	tss = make([]*TableSpec, 0, len(tables))
+ 
+ 	for i := 0; i < len(tables); i++ {
+-		tss = append(tss, &(TableSpec{ Name: tables[i]}))
++		tss = append(tss, &(TableSpec{Name: tables[i]}))
+ 	}
+ 
+ 	return tss
+@@ -1120,7 +1124,7 @@ func (d *DB) StartTx(w []WatchKeys, tss
+ 	//   Else append keys to the Cmd args
+ 	//   Note: (LUA scripts do not support WATCH)
+ 
+-	args = make([]interface{}, 0, len(w) + len(tss) + 1)
++	args = make([]interface{}, 0, len(w)+len(tss)+1)
+ 	args = append(args, "WATCH")
+ 	for i := 0; i < len(w); i++ {
+ 
+@@ -1144,7 +1148,7 @@ func (d *DB) StartTx(w []WatchKeys, tss
+ 	// for each TS, append to args the CONFIG_DB_UPDATED_<TABLENAME> key
+ 
+ 	for i := 0; i < len(tss); i++ {
+-		args = append( args, d.ts2redisUpdated(tss[i]))
++		args = append(args, d.ts2redisUpdated(tss[i]))
+ 	}
+ 
+ 	if len(args) == 1 {
+@@ -1179,8 +1183,7 @@ func (d *DB) CommitTx() error {
+ 	}
+ 
+ 	var e error = nil
+-	var tsmap map[TableSpec]bool =
+-		make(map[TableSpec]bool, len(d.txCmds)) // UpperBound
++	var tsmap map[TableSpec]bool = make(map[TableSpec]bool, len(d.txCmds)) // UpperBound
+ 
+ 	// Validate State
+ 	switch d.txState {
+@@ -1221,7 +1224,7 @@ func (d *DB) CommitTx() error {
+ 		redisKey := d.key2redis(d.txCmds[i].ts, *(d.txCmds[i].key))
+ 
+ 		// Add TS to the map of watchTables
+-		tsmap[*(d.txCmds[i].ts)] = true;
++		tsmap[*(d.txCmds[i].ts)] = true
+ 
+ 		switch d.txCmds[i].op {
+ 
+@@ -1285,7 +1288,7 @@ func (d *DB) CommitTx() error {
+ 				e.Error())
+ 		}
+ 	}
+-	_, e = d.client.Do("SET", d.ts2redisUpdated(& TableSpec{Name: "*"}),
++	_, e = d.client.Do("SET", d.ts2redisUpdated(&TableSpec{Name: "*"}),
+ 		"1").Result()
+ 	if e != nil {
+ 		glog.Warning("CommitTx: Do: SET ",
+@@ -1297,7 +1300,7 @@ func (d *DB) CommitTx() error {
+ 
+ 	if e != nil {
+ 		glog.Warning("CommitTx: Do: EXEC e: ", e.Error())
+-		e = tlerr.TranslibTransactionFail { }
++		e = tlerr.TranslibTransactionFail{}
+ 	}
+ 
+ 	// Switch State, Clear Command list
+Index: usonic/sm/sonic-mgmt-common/translib/translib.go
+===================================================================
+--- usonic.orig/sm/sonic-mgmt-common/translib/translib.go
++++ usonic/sm/sonic-mgmt-common/translib/translib.go
+@@ -11,7 +11,7 @@
+ //                                                                            //
+ //  Unless required by applicable law or agreed to in writing, software       //
+ //  distributed under the License is distributed on an "AS IS" BASIS,         //
+-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //  
++//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //
+ //  See the License for the specific language governing permissions and       //
+ //  limitations under the License.                                            //
+ //                                                                            //
+@@ -22,7 +22,7 @@ Package translib implements APIs like Cr
+ 
+ to be consumed by the north bound management server implementations
+ 
+-This package take care of translating the incoming requests to 
++This package take care of translating the incoming requests to
+ 
+ Redis ABNF format and persisting them in the Redis DB.
+ 
+@@ -34,12 +34,13 @@ This package can also talk to non-DB cli
+ package translib
+ 
+ import (
+-		//"errors"
+-		"sync"
+-		"github.com/Azure/sonic-mgmt-common/translib/db"
+-        "github.com/Workiva/go-datastructures/queue"
+-        log "github.com/golang/glog"
+-		"github.com/Azure/sonic-mgmt-common/translib/tlerr"
++	//"errors"
++	"github.com/Azure/sonic-mgmt-common/translib/db"
++	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
++	"github.com/Workiva/go-datastructures/queue"
++	log "github.com/golang/glog"
++	"os"
++	"sync"
+ )
+ 
+ //Write lock for all write operations to be synchronized
+@@ -51,92 +52,92 @@ var maxSubsInterval = 60
+ 
+ type ErrSource int
+ 
+-const(
++const (
+ 	ProtoErr ErrSource = iota
+ 	AppErr
+ )
+ 
+-type SetRequest struct{
+-    Path       string
+-    Payload    []byte
++type SetRequest struct {
++	Path    string
++	Payload []byte
+ }
+ 
+-type SetResponse struct{
+-	ErrSrc     ErrSource
++type SetResponse struct {
++	ErrSrc ErrSource
+ }
+ 
+-type GetRequest struct{
+-    Path       string
++type GetRequest struct {
++	Path string
+ }
+ 
+-type GetResponse struct{
+-    Payload    []byte
+-	ErrSrc     ErrSource
++type GetResponse struct {
++	Payload []byte
++	ErrSrc  ErrSource
+ }
+ 
+-type SubscribeResponse struct{
+-	Path		 string
++type SubscribeResponse struct {
++	Path         string
+ 	Payload      []byte
+-	Timestamp	 int64
++	Timestamp    int64
+ 	SyncComplete bool
+ 	IsTerminated bool
+ }
+ 
+ type NotificationType int
+ 
+-const(
+-    Sample	NotificationType = iota
+-    OnChange
++const (
++	Sample NotificationType = iota
++	OnChange
+ )
+ 
+-type IsSubscribeResponse struct{
+-	Path					string
+-	IsOnChangeSupported		bool
+-	MinInterval				int
+-	Err						error
+-	PreferredType			NotificationType
++type IsSubscribeResponse struct {
++	Path                string
++	IsOnChangeSupported bool
++	MinInterval         int
++	Err                 error
++	PreferredType       NotificationType
+ }
+ 
+-type ModelData struct{
+-	Name      string
+-	Org		  string
+-	Ver		  string
++type ModelData struct {
++	Name string
++	Org  string
++	Ver  string
+ }
+ 
+ type notificationOpts struct {
+-    mInterval		int
+-    pType			NotificationType  // for TARGET_DEFINED
++	mInterval int
++	pType     NotificationType // for TARGET_DEFINED
+ }
+ 
+ //initializes logging and app modules
+ func init() {
+-    log.Flush()
++	log.Flush()
+ }
+ 
+ //Creates entries in the redis DB pertaining to the path and payload
+-func Create(req SetRequest) (SetResponse, error){
++func Create(req SetRequest) (SetResponse, error) {
+ 	var keys []db.WatchKeys
+ 	var resp SetResponse
+ 
+-	path	:= req.Path
+-    payload := req.Payload
++	path := req.Path
++	payload := req.Payload
+ 
+-    log.Info("Create request received with path =", path)
+-    log.Info("Create request received with payload =", string(payload))
++	log.Info("Create request received with path =", path)
++	log.Info("Create request received with payload =", string(payload))
+ 
+ 	app, appInfo, err := getAppModule(path)
+ 
+ 	if err != nil {
+ 		resp.ErrSrc = ProtoErr
+-        return resp, err
++		return resp, err
+ 	}
+ 
+-    err = appInitialize(app, appInfo, path, &payload, CREATE)
++	err = appInitialize(app, appInfo, path, &payload, CREATE)
+ 
+-    if  err != nil {
++	if err != nil {
+ 		resp.ErrSrc = AppErr
+ 		return resp, err
+-    }
++	}
+ 
+ 	writeMutex.Lock()
+ 	defer writeMutex.Unlock()
+@@ -150,329 +151,329 @@ func Create(req SetRequest) (SetResponse
+ 
+ 	defer d.DeleteDB()
+ 
+-    keys, err = (*app).translateCreate(d)
++	keys, err = (*app).translateCreate(d)
+ 
+ 	if err != nil {
+ 		resp.ErrSrc = AppErr
+-        return resp, err
++		return resp, err
+ 	}
+ 
+ 	err = d.StartTx(keys, appInfo.tablesToWatch)
+ 
+ 	if err != nil {
+ 		resp.ErrSrc = AppErr
+-        return resp, err
++		return resp, err
+ 	}
+ 
+-    resp, err = (*app).processCreate (d)
++	resp, err = (*app).processCreate(d)
+ 
+-    if err != nil {
++	if err != nil {
+ 		d.AbortTx()
+ 		resp.ErrSrc = AppErr
+-        return resp, err
+-    }
++		return resp, err
++	}
+ 
+ 	err = d.CommitTx()
+ 
+-    if err != nil {
+-        resp.ErrSrc = AppErr
+-    }
++	if err != nil {
++		resp.ErrSrc = AppErr
++	}
+ 
+-    return resp, err
++	return resp, err
+ }
+ 
+ //Updates entries in the redis DB pertaining to the path and payload
+-func Update(req SetRequest) (SetResponse, error){
+-    var keys []db.WatchKeys
++func Update(req SetRequest) (SetResponse, error) {
++	var keys []db.WatchKeys
+ 	var resp SetResponse
+ 
+-    path    := req.Path
+-    payload := req.Payload
++	path := req.Path
++	payload := req.Payload
+ 
+-    log.Info("Update request received with path =", path)
+-    log.Info("Update request received with payload =", string(payload))
++	log.Info("Update request received with path =", path)
++	log.Info("Update request received with payload =", string(payload))
+ 
+ 	app, appInfo, err := getAppModule(path)
+ 
+-    if err != nil {
++	if err != nil {
+ 		resp.ErrSrc = ProtoErr
+-        return resp, err
+-    }
++		return resp, err
++	}
+ 
+-    err = appInitialize(app, appInfo, path, &payload, UPDATE)
++	err = appInitialize(app, appInfo, path, &payload, UPDATE)
+ 
+-    if  err != nil {
+-        resp.ErrSrc = AppErr
+-        return resp, err
+-    }
++	if err != nil {
++		resp.ErrSrc = AppErr
++		return resp, err
++	}
+ 
+-    writeMutex.Lock()
++	writeMutex.Lock()
+ 	defer writeMutex.Unlock()
+ 
+-    d, err := db.NewDB(getDBOptions(db.ConfigDB))
++	d, err := db.NewDB(getDBOptions(db.ConfigDB))
+ 
+-    if err != nil {
+-        resp.ErrSrc = ProtoErr
+-        return resp, err
+-    }
++	if err != nil {
++		resp.ErrSrc = ProtoErr
++		return resp, err
++	}
+ 
+ 	defer d.DeleteDB()
+ 
+-    keys, err = (*app).translateUpdate(d)
++	keys, err = (*app).translateUpdate(d)
+ 
+-    if err != nil {
++	if err != nil {
+ 		resp.ErrSrc = AppErr
+-        return resp, err
+-    }
++		return resp, err
++	}
+ 
+-    err = d.StartTx(keys, appInfo.tablesToWatch)
++	err = d.StartTx(keys, appInfo.tablesToWatch)
+ 
+-    if err != nil {
++	if err != nil {
+ 		resp.ErrSrc = AppErr
+-        return resp, err
+-    }
++		return resp, err
++	}
+ 
+-    resp, err = (*app).processUpdate (d)
++	resp, err = (*app).processUpdate(d)
+ 
+-    if err != nil {
+-        d.AbortTx()
++	if err != nil {
++		d.AbortTx()
+ 		resp.ErrSrc = AppErr
+-        return resp, err
+-    }
++		return resp, err
++	}
+ 
+-    err = d.CommitTx()
++	err = d.CommitTx()
+ 
+-    if err != nil {
+-        resp.ErrSrc = AppErr
+-    }
++	if err != nil {
++		resp.ErrSrc = AppErr
++	}
+ 
+-    return resp, err
++	return resp, err
+ }
+ 
+ //Replaces entries in the redis DB pertaining to the path and payload
+-func Replace(req SetRequest) (SetResponse, error){
+-    var err error
+-    var keys []db.WatchKeys
++func Replace(req SetRequest) (SetResponse, error) {
++	var err error
++	var keys []db.WatchKeys
+ 	var resp SetResponse
+ 
+-    path    := req.Path
+-    payload := req.Payload
++	path := req.Path
++	payload := req.Payload
+ 
+-    log.Info("Replace request received with path =", path)
+-    log.Info("Replace request received with payload =", string(payload))
++	log.Info("Replace request received with path =", path)
++	log.Info("Replace request received with payload =", string(payload))
+ 
+ 	app, appInfo, err := getAppModule(path)
+ 
+-    if err != nil {
++	if err != nil {
+ 		resp.ErrSrc = ProtoErr
+-        return resp, err
+-    }
++		return resp, err
++	}
+ 
+-    err = appInitialize(app, appInfo, path, &payload, REPLACE)
++	err = appInitialize(app, appInfo, path, &payload, REPLACE)
+ 
+-    if  err != nil {
+-        resp.ErrSrc = AppErr
+-        return resp, err
+-    }
++	if err != nil {
++		resp.ErrSrc = AppErr
++		return resp, err
++	}
+ 
+-    writeMutex.Lock()
++	writeMutex.Lock()
+ 	defer writeMutex.Unlock()
+ 
+-    d, err := db.NewDB(getDBOptions(db.ConfigDB))
++	d, err := db.NewDB(getDBOptions(db.ConfigDB))
+ 
+-    if err != nil {
+-        resp.ErrSrc = ProtoErr
+-        return resp, err
+-    }
++	if err != nil {
++		resp.ErrSrc = ProtoErr
++		return resp, err
++	}
+ 
+ 	defer d.DeleteDB()
+ 
+-    keys, err = (*app).translateReplace(d)
++	keys, err = (*app).translateReplace(d)
+ 
+-    if err != nil {
++	if err != nil {
+ 		resp.ErrSrc = AppErr
+-        return resp, err
+-    }
++		return resp, err
++	}
+ 
+-    err = d.StartTx(keys, appInfo.tablesToWatch)
++	err = d.StartTx(keys, appInfo.tablesToWatch)
+ 
+-    if err != nil {
++	if err != nil {
+ 		resp.ErrSrc = AppErr
+-        return resp, err
+-    }
++		return resp, err
++	}
+ 
+-    resp, err = (*app).processReplace (d)
++	resp, err = (*app).processReplace(d)
+ 
+-    if err != nil {
+-        d.AbortTx()
++	if err != nil {
++		d.AbortTx()
+ 		resp.ErrSrc = AppErr
+-        return resp, err
+-    }
++		return resp, err
++	}
+ 
+-    err = d.CommitTx()
++	err = d.CommitTx()
+ 
+ 	if err != nil {
+ 		resp.ErrSrc = AppErr
+-    }
++	}
+ 
+-    return resp, err
++	return resp, err
+ }
+ 
+ //Deletes entries in the redis DB pertaining to the path
+-func Delete(req SetRequest) (SetResponse, error){
+-    var err error
+-    var keys []db.WatchKeys
++func Delete(req SetRequest) (SetResponse, error) {
++	var err error
++	var keys []db.WatchKeys
+ 	var resp SetResponse
+ 
+-    path    := req.Path
++	path := req.Path
+ 
+-    log.Info("Delete request received with path =", path)
++	log.Info("Delete request received with path =", path)
+ 
+ 	app, appInfo, err := getAppModule(path)
+ 
+-    if err != nil {
++	if err != nil {
+ 		resp.ErrSrc = ProtoErr
+-        return resp, err
+-    }
++		return resp, err
++	}
+ 
+-    err = appInitialize(app, appInfo, path, nil, DELETE)
++	err = appInitialize(app, appInfo, path, nil, DELETE)
+ 
+-    if  err != nil {
+-        resp.ErrSrc = AppErr
+-        return resp, err
+-    }
++	if err != nil {
++		resp.ErrSrc = AppErr
++		return resp, err
++	}
+ 
+-    writeMutex.Lock()
++	writeMutex.Lock()
+ 	defer writeMutex.Unlock()
+ 
+-    d, err := db.NewDB(getDBOptions(db.ConfigDB))
++	d, err := db.NewDB(getDBOptions(db.ConfigDB))
+ 
+-    if err != nil {
+-        resp.ErrSrc = ProtoErr
+-        return resp, err
+-    }
++	if err != nil {
++		resp.ErrSrc = ProtoErr
++		return resp, err
++	}
+ 
+ 	defer d.DeleteDB()
+ 
+-    keys, err = (*app).translateDelete(d)
++	keys, err = (*app).translateDelete(d)
+ 
+-    if err != nil {
++	if err != nil {
+ 		resp.ErrSrc = AppErr
+-        return resp, err
+-    }
++		return resp, err
++	}
+ 
+-    err = d.StartTx(keys, appInfo.tablesToWatch)
++	err = d.StartTx(keys, appInfo.tablesToWatch)
+ 
+-    if err != nil {
++	if err != nil {
+ 		resp.ErrSrc = AppErr
+-        return resp, err
+-    }
++		return resp, err
++	}
+ 
+-    resp, err = (*app).processDelete(d)
++	resp, err = (*app).processDelete(d)
+ 
+-    if err != nil {
+-        d.AbortTx()
++	if err != nil {
++		d.AbortTx()
+ 		resp.ErrSrc = AppErr
+-        return resp, err
+-    }
++		return resp, err
++	}
+ 
+-    err = d.CommitTx()
++	err = d.CommitTx()
+ 
+-    if err != nil {
+-        resp.ErrSrc = AppErr
+-    }
++	if err != nil {
++		resp.ErrSrc = AppErr
++	}
+ 
+ 	return resp, err
+ }
+ 
+ //Gets data from the redis DB and converts it to northbound format
+-func Get(req GetRequest) (GetResponse, error){
+-    var payload []byte
++func Get(req GetRequest) (GetResponse, error) {
++	var payload []byte
+ 	var resp GetResponse
+ 
+ 	path := req.Path
+ 
+-    log.Info("Received Get request for path = ",path)
++	log.Info("Received Get request for path = ", path)
+ 
+ 	app, appInfo, err := getAppModule(path)
+ 
+-    if err != nil {
+-        resp = GetResponse{Payload:payload, ErrSrc:ProtoErr}
+-        return resp, err
+-    }
++	if err != nil {
++		resp = GetResponse{Payload: payload, ErrSrc: ProtoErr}
++		return resp, err
++	}
+ 
+ 	err = appInitialize(app, appInfo, path, nil, GET)
+ 
+-	if  err != nil {
+-		resp = GetResponse{Payload:payload, ErrSrc:AppErr}
++	if err != nil {
++		resp = GetResponse{Payload: payload, ErrSrc: AppErr}
+ 		return resp, err
+ 	}
+ 
+ 	dbs, err := getAllDbs()
+ 
+ 	if err != nil {
+-		resp = GetResponse{Payload:payload, ErrSrc:ProtoErr}
+-        return resp, err
++		resp = GetResponse{Payload: payload, ErrSrc: ProtoErr}
++		return resp, err
+ 	}
+ 
+ 	defer closeAllDbs(dbs[:])
+ 
+-    err = (*app).translateGet (dbs)
++	err = (*app).translateGet(dbs)
+ 
+ 	if err != nil {
+-		resp = GetResponse{Payload:payload, ErrSrc:AppErr}
+-        return resp, err
++		resp = GetResponse{Payload: payload, ErrSrc: AppErr}
++		return resp, err
+ 	}
+ 
+-    resp, err = (*app).processGet(dbs)
++	resp, err = (*app).processGet(dbs)
+ 
+-    return resp, err
++	return resp, err
+ }
+ 
+ //Subscribes to the paths requested and sends notifications when the data changes in DB
+ func Subscribe(paths []string, q *queue.PriorityQueue, stop chan struct{}) ([]*IsSubscribeResponse, error) {
+-    var err error
++	var err error
+ 	var sErr error
+ 	//err = errors.New("Not implemented")
+ 
+ 	dbNotificationMap := make(map[db.DBNum][]*notificationInfo)
+ 
+-	resp := make ([]*IsSubscribeResponse, len(paths))
++	resp := make([]*IsSubscribeResponse, len(paths))
+ 
+-    for i, _ := range resp {
+-        resp[i] = &IsSubscribeResponse{Path: paths[i],
+-                                IsOnChangeSupported: false,
+-                                MinInterval: minSubsInterval,
+-								PreferredType:Sample,
+-								Err:nil}
+-    }
++	for i, _ := range resp {
++		resp[i] = &IsSubscribeResponse{Path: paths[i],
++			IsOnChangeSupported: false,
++			MinInterval:         minSubsInterval,
++			PreferredType:       Sample,
++			Err:                 nil}
++	}
+ 
+ 	dbs, err := getAllDbs()
+ 
+-    if err != nil {
+-        return resp, err
+-    }
++	if err != nil {
++		return resp, err
++	}
+ 
+ 	//Do NOT close the DBs here as we need to use them during subscribe notification
+ 
+-    for i, path := range paths {
++	for i, path := range paths {
+ 
+ 		app, appInfo, err := getAppModule(path)
+ 
+-        if err != nil {
++		if err != nil {
+ 
+-            if sErr == nil {
++			if sErr == nil {
+ 				sErr = err
+ 			}
+ 
+ 			resp[i].Err = err
+ 			continue
+-        }
++		}
+ 
+-        nOpts, nInfo, errApp := (*app).translateSubscribe (dbs, path)
++		nOpts, nInfo, errApp := (*app).translateSubscribe(dbs, path)
+ 
+-        if errApp != nil {
+-            resp[i].Err = errApp
++		if errApp != nil {
++			resp[i].Err = errApp
+ 
+ 			if sErr == nil {
+ 				sErr = errApp
+@@ -480,23 +481,23 @@ func Subscribe(paths []string, q *queue.
+ 
+ 			resp[i].MinInterval = maxSubsInterval
+ 
+-            if nOpts != nil {
+-                if nOpts.mInterval != 0 {
+-                    resp[i].MinInterval = nOpts.mInterval
+-                }
++			if nOpts != nil {
++				if nOpts.mInterval != 0 {
++					resp[i].MinInterval = nOpts.mInterval
++				}
+ 
+-                resp[i].PreferredType = nOpts.pType
+-            }
++				resp[i].PreferredType = nOpts.pType
++			}
+ 
+-            continue
+-        } else {
++			continue
++		} else {
+ 
+ 			if nOpts != nil {
+ 				if nOpts.mInterval != 0 {
+ 					resp[i].MinInterval = nOpts.mInterval
+ 				}
+ 
+-	            resp[i].PreferredType = nOpts.pType
++				resp[i].PreferredType = nOpts.pType
+ 			}
+ 
+ 			if nInfo == nil {
+@@ -506,7 +507,7 @@ func Subscribe(paths []string, q *queue.
+ 				continue
+ 			}
+ 
+-            resp[i].IsOnChangeSupported = true
++			resp[i].IsOnChangeSupported = true
+ 
+ 			nInfo.path = path
+ 			nInfo.app = app
+@@ -514,7 +515,7 @@ func Subscribe(paths []string, q *queue.
+ 			nInfo.dbs = dbs
+ 
+ 			dbNotificationMap[nInfo.dbno] = append(dbNotificationMap[nInfo.dbno], nInfo)
+-        }
++		}
+ 
+ 	}
+ 
+@@ -524,9 +525,9 @@ func Subscribe(paths []string, q *queue.
+ 		return resp, sErr
+ 	}
+ 
+-	sInfo := &subscribeInfo {syncDone:false,
+-					q:q,
+-					stop:stop}
++	sInfo := &subscribeInfo{syncDone: false,
++		q:    q,
++		stop: stop}
+ 
+ 	sErr = startSubscribe(sInfo, dbNotificationMap)
+ 
+@@ -536,21 +537,21 @@ func Subscribe(paths []string, q *queue.
+ //Check if subscribe is supported on the given paths
+ func IsSubscribeSupported(paths []string) ([]*IsSubscribeResponse, error) {
+ 
+-	resp := make ([]*IsSubscribeResponse, len(paths))
++	resp := make([]*IsSubscribeResponse, len(paths))
+ 
+ 	for i, _ := range resp {
+-        resp[i] = &IsSubscribeResponse{Path: paths[i],
+-                                IsOnChangeSupported: false,
+-                                MinInterval: minSubsInterval,
+-                                PreferredType:Sample,
+-                                Err:nil}
++		resp[i] = &IsSubscribeResponse{Path: paths[i],
++			IsOnChangeSupported: false,
++			MinInterval:         minSubsInterval,
++			PreferredType:       Sample,
++			Err:                 nil}
+ 	}
+ 
+ 	dbs, err := getAllDbs()
+ 
+-    if err != nil {
+-        return resp, err
+-    }
++	if err != nil {
++		return resp, err
++	}
+ 
+ 	defer closeAllDbs(dbs[:])
+ 
+@@ -563,14 +564,14 @@ func IsSubscribeSupported(paths []string
+ 			continue
+ 		}
+ 
+-		nOpts, _, errApp := (*app).translateSubscribe (dbs, path)
++		nOpts, _, errApp := (*app).translateSubscribe(dbs, path)
+ 
+ 		if errApp != nil {
+ 			resp[i].Err = errApp
+ 			err = errApp
+-            continue
+-        } else {
+-			resp[i].IsOnChangeSupported= true
++			continue
++		} else {
++			resp[i].IsOnChangeSupported = true
+ 
+ 			if nOpts != nil {
+ 				if nOpts.mInterval != 0 {
+@@ -594,18 +595,18 @@ func GetModels() ([]ModelData, error) {
+ //Creates connection will all the redis DBs. To be used for get request
+ func getAllDbs() ([db.MaxDB]*db.DB, error) {
+ 	var dbs [db.MaxDB]*db.DB
+-    var err error
++	var err error
+ 
+ 	//Create Application DB connection
+-    dbs[db.ApplDB], err = db.NewDB(getDBOptions(db.ApplDB))
++	dbs[db.ApplDB], err = db.NewDB(getDBOptions(db.ApplDB))
+ 
+ 	if err != nil {
+ 		closeAllDbs(dbs[:])
+ 		return dbs, err
+ 	}
+ 
+-    //Create ASIC DB connection
+-    dbs[db.AsicDB], err = db.NewDB(getDBOptions(db.AsicDB))
++	//Create ASIC DB connection
++	dbs[db.AsicDB], err = db.NewDB(getDBOptions(db.AsicDB))
+ 
+ 	if err != nil {
+ 		closeAllDbs(dbs[:])
+@@ -613,7 +614,7 @@ func getAllDbs() ([db.MaxDB]*db.DB, erro
+ 	}
+ 
+ 	//Create Counter DB connection
+-    dbs[db.CountersDB], err = db.NewDB(getDBOptions(db.CountersDB))
++	dbs[db.CountersDB], err = db.NewDB(getDBOptions(db.CountersDB))
+ 
+ 	if err != nil {
+ 		closeAllDbs(dbs[:])
+@@ -621,7 +622,7 @@ func getAllDbs() ([db.MaxDB]*db.DB, erro
+ 	}
+ 
+ 	//Create Log Level DB connection
+-    dbs[db.LogLevelDB], err = db.NewDB(getDBOptions(db.LogLevelDB))
++	dbs[db.LogLevelDB], err = db.NewDB(getDBOptions(db.LogLevelDB))
+ 
+ 	if err != nil {
+ 		closeAllDbs(dbs[:])
+@@ -629,7 +630,7 @@ func getAllDbs() ([db.MaxDB]*db.DB, erro
+ 	}
+ 
+ 	//Create Config DB connection
+-    dbs[db.ConfigDB], err = db.NewDB(getDBOptions(db.ConfigDB))
++	dbs[db.ConfigDB], err = db.NewDB(getDBOptions(db.ConfigDB))
+ 
+ 	if err != nil {
+ 		closeAllDbs(dbs[:])
+@@ -637,7 +638,7 @@ func getAllDbs() ([db.MaxDB]*db.DB, erro
+ 	}
+ 
+ 	//Create Flex Counter DB connection
+-    dbs[db.FlexCounterDB], err = db.NewDB(getDBOptions(db.FlexCounterDB))
++	dbs[db.FlexCounterDB], err = db.NewDB(getDBOptions(db.FlexCounterDB))
+ 
+ 	if err != nil {
+ 		closeAllDbs(dbs[:])
+@@ -645,7 +646,7 @@ func getAllDbs() ([db.MaxDB]*db.DB, erro
+ 	}
+ 
+ 	//Create State DB connection
+-    dbs[db.StateDB], err = db.NewDB(getDBOptions(db.StateDB))
++	dbs[db.StateDB], err = db.NewDB(getDBOptions(db.StateDB))
+ 
+ 	if err != nil {
+ 		closeAllDbs(dbs[:])
+@@ -688,58 +689,69 @@ func getDBOptions(dbNo db.DBNum) db.Opti
+ 		break
+ 	}
+ 
++	if os.Getenv("TRANSLIB_REDIS_HOST") != "" {
++		opt.Addr = os.Getenv("TRANSLIB_REDIS_HOST")
++	}
++
+ 	return opt
+ }
+ 
+ func getDBOptionsWithSeparator(dbNo db.DBNum, initIndicator string, tableSeparator string, keySeparator string) db.Options {
+-	return(db.Options {
+-                    DBNo              : dbNo,
+-                    InitIndicator     : initIndicator,
+-                    TableNameSeparator: tableSeparator,
+-                    KeySeparator      : keySeparator,
+-                      })
++
++	addr := ""
++	if os.Getenv("TRANSLIB_REDIS_HOST") != "" {
++		addr = os.Getenv("TRANSLIB_REDIS_HOST")
++	}
++
++	return (db.Options{
++		DBNo:               dbNo,
++		InitIndicator:      initIndicator,
++		TableNameSeparator: tableSeparator,
++		KeySeparator:       keySeparator,
++		Addr:               addr,
++	})
+ }
+ 
+-func getAppModule (path string) (*appInterface, *appInfo, error) {
++func getAppModule(path string) (*appInterface, *appInfo, error) {
+ 	var app appInterface
+ 
+-    aInfo, err := getAppModuleInfo(path)
++	aInfo, err := getAppModuleInfo(path)
+ 
+-    if err != nil {
+-        return nil, aInfo, err
+-    }
++	if err != nil {
++		return nil, aInfo, err
++	}
+ 
+-    app, err = getAppInterface(aInfo.appType)
++	app, err = getAppInterface(aInfo.appType)
+ 
+-    if err != nil {
+-        return nil, aInfo, err
+-    }
++	if err != nil {
++		return nil, aInfo, err
++	}
+ 
+ 	return &app, aInfo, err
+ }
+ 
+-func appInitialize (app *appInterface, appInfo *appInfo, path string, payload *[]byte, opCode int) error {
+-    var err error
+-    var input []byte
+-
+-    if payload != nil {
+-        input = *payload
+-    }
+-
+-    if appInfo.isNative {
+-        log.Info("Native MSFT format")
+-        data := appData{path: path, payload: input}
+-        (*app).initialize(data)
+-    } else {
+-       ygotStruct, ygotTarget, err := getRequestBinder (&path, payload, opCode, &(appInfo.ygotRootType)).unMarshall()
+-        if err != nil {
+-            log.Info("Error in request binding: ", err)
+-            return err
+-        }
+-
+-        data := appData{path: path, payload: input, ygotRoot: ygotStruct, ygotTarget: ygotTarget}
+-        (*app).initialize(data)
+-    }
++func appInitialize(app *appInterface, appInfo *appInfo, path string, payload *[]byte, opCode int) error {
++	var err error
++	var input []byte
++
++	if payload != nil {
++		input = *payload
++	}
++
++	if appInfo.isNative {
++		log.Info("Native MSFT format")
++		data := appData{path: path, payload: input}
++		(*app).initialize(data)
++	} else {
++		ygotStruct, ygotTarget, err := getRequestBinder(&path, payload, opCode, &(appInfo.ygotRootType)).unMarshall()
++		if err != nil {
++			log.Info("Error in request binding: ", err)
++			return err
++		}
++
++		data := appData{path: path, payload: input, ygotRoot: ygotStruct, ygotTarget: ygotTarget}
++		(*app).initialize(data)
++	}
+ 
+-    return err
++	return err
+ }
