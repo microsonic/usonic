@@ -2,11 +2,12 @@
 FROM debian:buster as builder
 
 RUN --mount=type=cache,target=/var/cache/apt --mount=type=cache,target=/var/lib/apt \
-apt update && apt install -qy make autotools-dev autoconf dh-exec debhelper libtool pkg-config m4 libxml2-utils xsltproc python-lxml libexpat1-dev python rsync wget default-jdk libxml2-dev git cmake gcc libpcre3-dev python-pip quilt python3 python3-pip devscripts
+apt update && apt install -qy make autotools-dev autoconf dh-exec debhelper libtool pkg-config m4 libxml2-utils xsltproc python-lxml libexpat1-dev python rsync wget default-jdk libxml2-dev git cmake gcc libpcre3-dev python-pip quilt python3 python3-pip devscripts doxygen libcmocka-dev
 
 # remove libyang plugin library since debian package is broken
 # TODO fix this
 RUN --mount=type=tmpfs,target=/src cd /src && git clone https://github.com/CESNET/libyang.git && \
+            cd libyang && git checkout 875bcf800730a9a0ec155ffe19e176d6711655ff && cd .. && \
             sed -i -e '/usr\/lib\/\*\/libyang1/d' libyang/packages/debian.libyang.install && \
             cmake /src/libyang && make build-deb && cp -r debs/*.deb /tmp/ && make install
 
