@@ -7,8 +7,9 @@ apt update && apt install -qy make autotools-dev autoconf dh-exec debhelper libt
 # remove libyang plugin library since debian package is broken
 # TODO fix this
 RUN --mount=type=tmpfs,target=/src cd /src && git clone https://github.com/CESNET/libyang.git && \
+            cd libyang && git checkout 875bcf800730a9a0ec155ffe19e176d6711655ff && cd .. && \
             sed -i -e '/usr\/lib\/\*\/libyang1/d' libyang/packages/debian.libyang.install && \
-            cmake /src/libyang && make build-deb && cp -r debs/*.deb /tmp/ && make install && ldconfig
+            cmake /src/libyang && make build-deb && cp -r debs/*.deb /tmp/ && make install
 
 RUN --mount=type=tmpfs,target=/tmp cd /tmp && wget -O go.tar.gz https://golang.org/dl/go1.14.4.linux-amd64.tar.gz && tar -C /usr/local -xzf go.tar.gz
 
