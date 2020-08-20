@@ -6,3 +6,4 @@ mgmt/cvl_redis_host_option.patch
 mgmt/debian_package.patch
 mgmt/mgmt_rest_no_tls.patch
 mgmt/translib_redis_option.patch
+mgmt/sonic_vlan.patch
