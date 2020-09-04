@@ -4,8 +4,9 @@ data:
     vEthernet1:1,2,3,4
     vEthernet2:5,6,7,8
   port_config.ini: |
-    Ethernet1 1,2,3,4
-    Ethernet2 5,6,7,8
+    # name          lanes                 alias            index  speed
+    Ethernet1 1,2,3,4 hundredGigE1 1 100000
+    Ethernet2 5,6,7,8 hundredGigE2 2 100000
   sai.profile: |
     SAI_VS_SWITCH_TYPE=SAI_VS_SWITCH_TYPE_BCM56850
     SAI_VS_INTERFACE_LANE_MAP_FILE=/etc/usonic/lanemap.ini
