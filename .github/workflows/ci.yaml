@@ -33,5 +33,5 @@ jobs:
             $K exec usonic-cli -- show vlan brief
         - run: |
             SONIC_MGMT_ADDR=$($K get svc sonic-mgmt -o=jsonpath='{.spec.clusterIP}{"\n"}')
-            (curl http://$SONIC_MGMT_ADDR/restconf/data/sonic-port:sonic-port | grep "\"index\":1") && exit 0 || true
+            curl http://$SONIC_MGMT_ADDR/restconf/data/sonic-port:sonic-port | grep "\"index\":1"
             curl http://$SONIC_MGMT_ADDR/restconf/data/sonic-vlan:sonic-vlan
