@@ -4,6 +4,7 @@ on:
         - master
         - 201811
         - 201904
+        - 201911
 jobs:
     job:
         runs-on: ubuntu-latest
