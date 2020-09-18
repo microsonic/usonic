@@ -6,6 +6,7 @@ apt update && apt install -qy libnl-3-200 libnl-genl-3-200 libnl-route-3-200 lib
 
 RUN --mount=type=bind,source=sm/sonic-py-swsssdk,target=/root,rw cd /root && python setup.py install
 RUN pip install jinja2==2.11.2 zipp==1.2.0
+RUN --mount=type=bind,source=sm/sonic-buildimage/src/sonic-py-common,target=/root,rw cd /root && python setup.py install
 RUN --mount=type=bind,source=sm/sonic-buildimage/src/sonic-config-engine,target=/root,rw cd /root && python setup.py install
 RUN pip install netifaces tabulate netaddr natsort==6.2.1 click
 RUN --mount=type=bind,source=sm/sonic-utilities,target=/root,rw cd /root && python setup.py install

@@ -12,4 +12,6 @@ apt update && apt install -qy make g++ graphviz autotools-dev autoconf doxygen l
 
 RUN --mount=type=bind,source=/tmp,target=/tmp,from=swss_common dpkg -i /tmp/*.deb
 RUN --mount=type=bind,source=/tmp,target=/tmp,from=sairedis dpkg -i /tmp/*.deb
-RUN --mount=type=bind,target=/root,rw cd /root && quilt push -a && make -C /root/make/swss
+RUN --mount=type=bind,source=sm/sonic-swss,target=/root/sm/sonic-swss,rw \
+    --mount=type=bind,source=make,target=/root/make \
+    make -C /root/make/swss
