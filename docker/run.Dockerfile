@@ -9,7 +9,7 @@ FROM ${USONIC_SWSS_IMAGE} as swss
 FROM debian:buster
 
 RUN --mount=type=cache,target=/var/cache/apt --mount=type=cache,target=/var/lib/apt \
-apt update && apt install -qy --no-install-recommends libnl-3-200 libnl-genl-3-200 libnl-route-3-200 libnl-nf-3-200 libhiredis0.14 socat iproute2
+apt update && apt install -qy --no-install-recommends libnl-3-200 libnl-genl-3-200 libnl-route-3-200 libnl-nf-3-200 libhiredis0.14 socat iproute2 libteam5
 
 RUN --mount=type=bind,from=swss_common,source=/tmp,target=/tmp ls /tmp/*.deb | awk '$0 !~ /python/ && $0 !~ /-dbg_/ && $0 !~ /-dev_/ { print $0 }' | xargs dpkg -i
 
