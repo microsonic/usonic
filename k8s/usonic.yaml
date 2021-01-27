@@ -19,9 +19,14 @@ spec:
               image: docker.io/microsonic/usonic-debug:201904
               imagePullPolicy: IfNotPresent
               command: ['/var/run/start/start.sh']
+              env:
+              - name: USONIC_VS_LANEMAP
+                value: /etc/usonic/lanemap.ini
               volumeMounts:
               - name: start-script
                 mountPath: /var/run/start
+              - name: usonic-config
+                mountPath: /etc/usonic/
               securityContext:
                 capabilities:
                     add: ["NET_ADMIN"]

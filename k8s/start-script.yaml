@@ -4,13 +4,24 @@ metadata:
   name: start-script
 data:
   prepvs.sh: |
-    #!/bin/sh
-    for index in $(seq 2);
+    #!/bin/bash
+    set -eux
+
+    echo ${USONIC_VS_LANEMAP}
+
+    cnt=0
+    while read line
     do
-        ip link add vEthernet$index type veth peer name veth$index
-        ip link set up dev vEthernet$index
-        ip link set up dev veth$index
-    done
+        if [ ${line:0:1} = '#' ]; then
+            continue
+        fi
+        cnt=$(expr $cnt + 1)
+        lhs=$(echo $line | cut -d: -f1)
+        rhs=veth$cnt
+        ip link add $lhs type veth peer name $rhs
+        ip link set up dev $lhs
+        ip link set up dev $rhs
+    done < ${USONIC_VS_LANEMAP}
   start.sh: | 
     #!/bin/sh
     set -eux
