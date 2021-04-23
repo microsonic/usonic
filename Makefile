@@ -31,14 +31,14 @@ ifndef USONIC_CLI_IMAGE
 endif
 
 ifndef DOCKER_REPO
-    DOCKER_REPO := docker.io/microsonic
+    DOCKER_REPO := ghcr.io/microsonic
 endif
 
 ifndef DOCKER_IMAGE
     DOCKER_IMAGE := $(DOCKER_REPO)/$(USONIC_DEBUG_IMAGE):$(USONIC_IMAGE_TAG)
 endif
 
-all: swss-common sairedis swss run-image debug-image cli
+all: swss-common sairedis swss run-image debug-image
 
 cli:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_BUILD_OPTION) -f docker/cli.Dockerfile \

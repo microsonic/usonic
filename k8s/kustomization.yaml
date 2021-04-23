@@ -1,0 +1,11 @@
+resources:
+- cli.yaml
+- config-db-json.yaml
+- redis-config.yaml
+- redis-service.yaml
+- redis.yaml
+- sonic-db-config.yaml
+- sonic-version.yaml
+- start-script.yaml
+- usonic-config.yaml
+- usonic.yaml
