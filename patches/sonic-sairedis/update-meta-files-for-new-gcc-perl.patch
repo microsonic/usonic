@@ -1,7 +1,7 @@
-Index: data/sm/sonic-sairedis/SAI/meta/Makefile
+Index: usonic/sm/sonic-sairedis/SAI/meta/Makefile
 ===================================================================
---- data.orig/sm/sonic-sairedis/SAI/meta/Makefile
-+++ data/sm/sonic-sairedis/SAI/meta/Makefile
+--- usonic.orig/sm/sonic-sairedis/SAI/meta/Makefile
++++ usonic/sm/sonic-sairedis/SAI/meta/Makefile
 @@ -90,7 +90,7 @@ xml: $(DEPS) Doxyfile $(CONSTHEADERS)
  EXTRA = acronyms.txt aspell.en.pws *.pm *.cap
  
@@ -11,10 +11,10 @@ Index: data/sm/sonic-sairedis/SAI/meta/Makefile
  
  HEADERS = saimetadata.h $(CONSTHEADERS)
  
-Index: data/sm/sonic-sairedis/SAI/meta/saisanitycheck.c
+Index: usonic/sm/sonic-sairedis/SAI/meta/saisanitycheck.c
 ===================================================================
---- data.orig/sm/sonic-sairedis/SAI/meta/saisanitycheck.c
-+++ data/sm/sonic-sairedis/SAI/meta/saisanitycheck.c
+--- usonic.orig/sm/sonic-sairedis/SAI/meta/saisanitycheck.c
++++ usonic/sm/sonic-sairedis/SAI/meta/saisanitycheck.c
 @@ -852,6 +852,8 @@ void check_attr_default_required(
                  break;
              }
@@ -24,10 +24,10 @@ Index: data/sm/sonic-sairedis/SAI/meta/saisanitycheck.c
          case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_OBJECT_LIST:
          case SAI_ATTR_VALUE_TYPE_ACL_ACTION_DATA_OBJECT_LIST:
          case SAI_ATTR_VALUE_TYPE_ACL_FIELD_DATA_UINT8_LIST:
-Index: data/sm/sonic-sairedis/SAI/meta/saiserializetest.c
+Index: usonic/sm/sonic-sairedis/SAI/meta/saiserializetest.c
 ===================================================================
---- data.orig/sm/sonic-sairedis/SAI/meta/saiserializetest.c
-+++ data/sm/sonic-sairedis/SAI/meta/saiserializetest.c
+--- usonic.orig/sm/sonic-sairedis/SAI/meta/saiserializetest.c
++++ usonic/sm/sonic-sairedis/SAI/meta/saiserializetest.c
 @@ -757,14 +757,14 @@ void test_deserialize_ip_prefix()
      uint16_t ip6[] = { 0x1111, 0x2222, 0x3303, 0x4444, 0x5555, 0x6666, 0xaaaa, 0xbbbb };
      uint16_t mask[16];
@@ -63,10 +63,10 @@ Index: data/sm/sonic-sairedis/SAI/meta/saiserializetest.c
      res = sai_deserialize_ip_prefix("::1/128", &prefix);
      ASSERT_TRUE(prefix.addr_family == SAI_IP_ADDR_FAMILY_IPV6, "expected true");
      ASSERT_TRUE(res == (int)strlen("::1/128"), "expected true");
-Index: data/sm/sonic-sairedis/SAI/meta/test.pm
+Index: usonic/sm/sonic-sairedis/SAI/meta/test.pm
 ===================================================================
---- data.orig/sm/sonic-sairedis/SAI/meta/test.pm
-+++ data/sm/sonic-sairedis/SAI/meta/test.pm
+--- usonic.orig/sm/sonic-sairedis/SAI/meta/test.pm
++++ usonic/sm/sonic-sairedis/SAI/meta/test.pm
 @@ -248,7 +248,7 @@ sub CreateApiNameTest
          }
  

@@ -12,4 +12,10 @@ apt update && apt install -qy --no-install-recommends make g++ graphviz autotool
 
 RUN --mount=type=bind,source=/tmp,target=/tmp,from=swss_common dpkg -i /tmp/*.deb
 RUN --mount=type=bind,source=/tmp,target=/tmp,from=sairedis dpkg -i /tmp/*.deb
-RUN --mount=type=bind,target=/root,rw cd /root && quilt push -a && make -C /root/make/swss
+
+RUN --mount=type=bind,source=sm/sonic-swss,target=/root/sm/sonic-swss,rw \
+    --mount=type=bind,source=patches/sonic-swss,target=/root/patches \
+    --mount=type=tmpfs,target=/root/.pc,rw \
+    --mount=type=bind,source=make/swss,target=/root/make/swss\
+    cd /root && quilt upgrade && quilt push -a && \
+    make -C /root/make/swss
