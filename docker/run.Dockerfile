@@ -24,3 +24,6 @@ RUN chmod +x /usr/bin/dsserve
 
 ADD https://sonicstorage.blob.core.windows.net/packages/20190307/bcmcmd?sv=2015-04-05&sr=b&sig=sUdbU7oVbh5exbXXHVL5TDFBTWDDBASHeJ8Cp0B0TIc%3D&se=2038-05-06T22%3A34%3A19Z&sp=r /usr/bin/bcmcmd
 RUN chmod +x /usr/bin/bcmcmd
+
+RUN printf '#!/bin/sh\n\nsocat unix-connect:/run/sswsyncd/sswsyncd.socket -\n' >> /usr/bin/bcmsh
+RUN chmod +x /usr/bin/bcmsh
