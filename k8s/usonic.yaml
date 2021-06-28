@@ -40,9 +40,14 @@ spec:
                 app: usonic
                 usonic: core
         spec:
+            serviceAccountName: usonic
             hostNetwork: true
             dnsPolicy: ClusterFirstWithHostNet
             initContainers:
+            - name: wait-redis
+              image: docker.io/bitnami/kubectl:latest
+              imagePullPolicy: IfNotPresent
+              command: ['kubectl', 'wait', '--for=condition=ready', 'pods/redis', '--timeout=5m']
             - name: init-loglevel
               image: ghcr.io/microsonic/usonic-debug:201904
               imagePullPolicy: IfNotPresent
@@ -55,13 +60,15 @@ spec:
                 mountPath: /var/run/start
               - name: usonic-config
                 mountPath: /etc/usonic/
+              - name: redis-sock
+                mountPath: /var/run/redis/redis.sock
               securityContext:
                 capabilities:
                     add: ["NET_ADMIN"]
             - name: init-configdb
               image: docker.io/microsonic/usonic-cli:latest
               imagePullPolicy: IfNotPresent
-              command: ['sonic-cfggen', '-k', 'dummy', '-p', '/etc/usonic/port_config.ini', '-j', '/etc/sonic/config_db.json', '--write-to-db']
+              command: ['sonic-cfggen', '-s', '/var/run/redis/redis.sock', '-k', 'dummy', '-p', '/etc/usonic/port_config.ini', '-j', '/etc/sonic/config_db.json', '--write-to-db']
               volumeMounts:
               - name: sonic-db-config
                 mountPath: /var/run/redis/sonic-db/
@@ -72,7 +79,10 @@ spec:
             - name: complete-init
               image: ghcr.io/microsonic/usonic-debug:201904
               imagePullPolicy: IfNotPresent
-              command: ['redis-cli', '-h', 'redis.default.svc.cluster.local', '-n', '4', 'SET', 'CONFIG_DB_INITIALIZED', '1']
+              command: ['redis-cli', '-s', '/var/run/redis/redis.sock', '-n', '4', 'SET', 'CONFIG_DB_INITIALIZED', '1']
+              volumeMounts:
+              - name: redis-sock
+                mountPath: /var/run/redis/redis.sock
             containers:
             - name: syncd
               image: ghcr.io/microsonic/usonic-debug:201904
@@ -201,7 +211,7 @@ spec:
                   command:
                   - bash
                   - -c
-                  - 'redis-cli -h redis.default.svc.cluster.local exists PORT_TABLE:PortInitDone | grep 1'
+                  - 'redis-cli -s /var/run/redis/redis.sock exists PORT_TABLE:PortInitDone | grep 1'
                 failureThreshold: 1
                 periodSeconds: 10
                 # using this instead of startupProbe for now
