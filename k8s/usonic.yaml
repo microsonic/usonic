@@ -278,6 +278,55 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+    name: usonic-teamd
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: usonic
+            usonic: teamd
+    strategy:
+        type: Recreate
+    template:
+        metadata:
+            labels:
+                app: usonic
+                usonic: teamd
+        spec:
+            serviceAccountName: usonic
+            hostNetwork: true
+            dnsPolicy: ClusterFirstWithHostNet
+            initContainers:
+            - name: wait-core
+              image: docker.io/bitnami/kubectl:latest
+              imagePullPolicy: IfNotPresent
+              command: ['kubectl', 'wait', '--for=condition=available', 'deploy/usonic-port', '--timeout=5m']
+            containers:
+            - name: teamsyncd
+              image: ghcr.io/microsonic/usonic-debug:201904
+              imagePullPolicy: IfNotPresent
+              command: ['teamsyncd']
+              volumeMounts:
+              - name: redis-sock
+                mountPath: /var/run/redis/redis.sock
+              - name: sonic-db-config
+                mountPath: /var/run/redis/sonic-db/
+              securityContext:
+                capabilities:
+                    add: ["NET_ADMIN"]
+            volumes:
+            - name: redis-sock
+              hostPath:
+                  path: /tmp/redis.sock
+            - name: sonic-db-config
+              configMap:
+                  name: sonic-db-config
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
     name: usonic-mgrd
 spec:
     replicas: 1
@@ -341,6 +390,18 @@ spec:
               image: ghcr.io/microsonic/usonic-debug:201904
               imagePullPolicy: IfNotPresent
               command: ['nbrmgrd']
+              volumeMounts:
+              - name: redis-sock
+                mountPath: /var/run/redis/redis.sock
+              - name: sonic-db-config
+                mountPath: /var/run/redis/sonic-db/
+              securityContext:
+                capabilities:
+                    add: ["NET_ADMIN"]
+            - name: teammgrd
+              image: ghcr.io/microsonic/usonic-debug:201904
+              imagePullPolicy: IfNotPresent
+              command: ['teammgrd']
               volumeMounts:
               - name: redis-sock
                 mountPath: /var/run/redis/redis.sock
