@@ -23,6 +23,7 @@ jobs:
         - uses: actions/checkout@v2
         - run: git submodule update --init --recursive sm/sonic-py-swsssdk sm/sonic-sairedis sm/sonic-swss sm/sonic-swss-common sm/sonic-utilities
         - run: git submodule update --init sm/sonic-buildimage
+        - run: cd sm/libteam && make all
         - name: Cache Docker layers
           uses: actions/cache@v2
           with:
@@ -54,6 +55,19 @@ jobs:
             cache-from: type=local,src=/tmp/.buildx-cache
             cache-to: type=local,dest=/tmp/.buildx-cache
             push: true
+        - name: Build usonic-libteam
+          uses: docker/build-push-action@v2
+          with:
+            context: ./
+            file: ./docker/build-libteam.Dockerfile
+            builder: ${{ steps.buildx.outputs.name }}
+            tags: ghcr.io/microsonic/usonic-libteam:${{ github.sha }}
+            build-args: |
+              USONIC_SWSS_COMMON_IMAGE=ghcr.io/microsonic/usonic-swss-common:${{ github.sha }}
+              USONIC_SAIREDIS_IMAGE=ghcr.io/microsonic/usonic-sairedis:${{ github.sha }}
+            cache-from: type=local,src=/tmp/.buildx-cache
+            cache-to: type=local,dest=/tmp/.buildx-cache
+            push: true
         - name: Build usonic-swss
           uses: docker/build-push-action@v2
           with:
@@ -64,6 +78,7 @@ jobs:
             build-args: |
               USONIC_SWSS_COMMON_IMAGE=ghcr.io/microsonic/usonic-swss-common:${{ github.sha }}
               USONIC_SAIREDIS_IMAGE=ghcr.io/microsonic/usonic-sairedis:${{ github.sha }}
+              USONIC_LIBTEAM_IMAGE=ghcr.io/microsonic/usonic-libteam:${{ github.sha }}
             cache-from: type=local,src=/tmp/.buildx-cache
             cache-to: type=local,dest=/tmp/.buildx-cache
             push: true
@@ -78,6 +93,7 @@ jobs:
               USONIC_SWSS_COMMON_IMAGE=ghcr.io/microsonic/usonic-swss-common:${{ github.sha }}
               USONIC_SAIREDIS_IMAGE=ghcr.io/microsonic/usonic-sairedis:${{ github.sha }}
               USONIC_SWSS_IMAGE=ghcr.io/microsonic/usonic-swss:${{ github.sha }}
+              USONIC_LIBTEAM_IMAGE=ghcr.io/microsonic/usonic-libteam:${{ github.sha }}
             cache-from: type=local,src=/tmp/.buildx-cache
             cache-to: type=local,dest=/tmp/.buildx-cache
             push: true
@@ -92,6 +108,7 @@ jobs:
               USONIC_SWSS_COMMON_IMAGE=ghcr.io/microsonic/usonic-swss-common:${{ github.sha }}
               USONIC_SAIREDIS_IMAGE=ghcr.io/microsonic/usonic-sairedis:${{ github.sha }}
               USONIC_SWSS_IMAGE=ghcr.io/microsonic/usonic-swss:${{ github.sha }}
+              USONIC_LIBTEAM_IMAGE=ghcr.io/microsonic/usonic-libteam:${{ github.sha }}
               USONIC_RUN_IMAGE=ghcr.io/microsonic/usonic:${{ github.sha }}
             cache-from: type=local,src=/tmp/.buildx-cache
             cache-to: type=local,dest=/tmp/.buildx-cache
