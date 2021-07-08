@@ -19,3 +19,6 @@
 [submodule "sm/sonic-frr"]
 	path = sm/sonic-frr
 	url = https://github.com/Azure/sonic-frr.git
+[submodule "sm/sonic-dbsyncd"]
+	path = sm/sonic-dbsyncd
+	url = https://github.com/Azure/sonic-dbsyncd.git

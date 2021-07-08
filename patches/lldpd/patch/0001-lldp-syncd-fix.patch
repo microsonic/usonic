@@ -1,0 +1,100 @@
+From 52dfddfdf4d3867fde34c44f155fe42883d2e74a Mon Sep 17 00:00:00 2001
+From: haribabu-a <BPraveen@palcnetworks.com>
+Date: Mon, 26 Jul 2021 11:54:22 +0530
+Subject: [PATCH] lldp syncd fix
+
+---
+ src/lldp_syncd/__main__.py | 10 ++--------
+ src/lldp_syncd/daemon.py   | 16 +++++++++++-----
+ 2 files changed, 13 insertions(+), 13 deletions(-)
+
+diff --git a/src/lldp_syncd/__main__.py b/src/lldp_syncd/__main__.py
+index 239a917..2916a35 100644
+--- a/src/lldp_syncd/__main__.py
++++ b/src/lldp_syncd/__main__.py
+@@ -13,14 +13,8 @@ args = swsssdk.util.process_options("lldp_syncd")
+ 
+ # configure logging. If debug is specified, logs to stdout at designated level. syslog otherwise.
+ log_level = args.get('log_level')
+-if log_level is None:
+-    syslog_handler = logging.handlers.SysLogHandler(address='/dev/log',
+-                                                    facility=logging.handlers.SysLogHandler.LOG_DAEMON)
+-    syslog_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+-    lldp_syncd.logger.addHandler(syslog_handler)
+-    log_level = logging.INFO
+-else:
+-    lldp_syncd.logger.addHandler(logging.StreamHandler(sys.stdout))
++log_level = logging.INFO
++lldp_syncd.logger.addHandler(logging.StreamHandler(sys.stdout))
+ 
+ # set the log levels
+ swsssdk.logger.setLevel(log_level)
+diff --git a/src/lldp_syncd/daemon.py b/src/lldp_syncd/daemon.py
+index 94af660..3a50572 100644
+--- a/src/lldp_syncd/daemon.py
++++ b/src/lldp_syncd/daemon.py
+@@ -110,7 +110,7 @@ class LldpSyncDaemon(SonicSyncDaemon):
+         # chassis = int(LldpChassisIdSubtype.chassisComponent) # (unsupported by lldpd)
+         local = int(LldpPortIdSubtype.local)
+ 
+-    def get_sys_capability_list(self, if_attributes):
++    def get_sys_capability_list(self, if_attributes, if_name, chassis_id):
+         """
+         Get a list of capabilities from interface attributes dictionary.
+         :param if_attributes: interface attributes
+@@ -118,12 +118,15 @@ class LldpSyncDaemon(SonicSyncDaemon):
+         """
+         try:
+             # [{'enabled': ..., 'type': 'capability1'}, {'enabled': ..., 'type': 'capability2'}]
+-            capability_list = if_attributes['chassis'].values()[0]['capability']
++            if 'capability' in if_attributes['chassis']:
++                capability_list = if_attributes['chassis']['capability']
++            else:
++                capability_list = if_attributes['chassis'].values()[0]['capability']
+             # {'enabled': ..., 'type': 'capability'}
+             if isinstance(capability_list, dict):
+                 capability_list = [capability_list]
+         except KeyError:
+-            logger.error("Failed to get system capabilities")
++            logger.info("Failed to get system capabilities on {} ({})".format(if_name, chassis_id))
+             return []
+         return capability_list
+ 
+@@ -230,6 +233,8 @@ class LldpSyncDaemon(SonicSyncDaemon):
+                     parsed_port = zip(rem_port_keys, self.parse_port(if_attributes['port']))
+                     parsed_interfaces[if_name].update(parsed_port)
+ 
++                chassis_id = ''
++
+                 if 'chassis' in if_attributes:
+                     rem_chassis_keys = ('lldp_rem_chassis_id_subtype',
+                                         'lldp_rem_chassis_id',
+@@ -239,6 +244,7 @@ class LldpSyncDaemon(SonicSyncDaemon):
+                     parsed_chassis = zip(rem_chassis_keys,
+                                          self.parse_chassis(if_attributes['chassis']))
+                     parsed_interfaces[if_name].update(parsed_chassis)
++                    chassis_id = parsed_chassis[1][1]
+ 
+                 # lldpRemTimeMark           TimeFilter,
+                 parsed_interfaces[if_name].update({'lldp_rem_time_mark':
+@@ -247,7 +253,7 @@ class LldpSyncDaemon(SonicSyncDaemon):
+                 # lldpRemIndex
+                 parsed_interfaces[if_name].update({'lldp_rem_index': str(if_attributes.get('rid'))})
+ 
+-                capability_list = self.get_sys_capability_list(if_attributes)
++                capability_list = self.get_sys_capability_list(if_attributes, if_name, chassis_id)
+                 # lldpSysCapSupported
+                 parsed_interfaces[if_name].update({'lldp_rem_sys_cap_supported':
+                                                    self.parse_sys_capabilities(capability_list)})
+@@ -266,7 +272,7 @@ class LldpSyncDaemon(SonicSyncDaemon):
+                                                             ['local-chassis']['chassis'])))
+ 
+                     loc_capabilities = self.get_sys_capability_list(lldp_json['lldp_loc_chassis']
+-                                                                    ['local-chassis'])
++                                                                    ['local-chassis'], if_name, chassis_id)
+                     # lldpLocSysCapSupported
+                     parsed_chassis.update({'lldp_loc_sys_cap_supported':
+                                           self.parse_sys_capabilities(loc_capabilities)})
+-- 
+2.17.1
+
