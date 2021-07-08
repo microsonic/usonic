@@ -309,15 +309,35 @@ spec:
               volumeMounts:
               - name: redis-sock
                 mountPath: /var/run/redis/redis.sock
+              - name: teamd
+                mountPath: /var/run/teamd/
               - name: sonic-db-config
                 mountPath: /var/run/redis/sonic-db/
               securityContext:
+                privileged: true
+                capabilities:
+                    add: ["NET_ADMIN"]
+            - name: teammgrd
+              image: ghcr.io/microsonic/usonic-debug:201904
+              imagePullPolicy: IfNotPresent
+              command: ['teammgrd']
+              volumeMounts:
+              - name: redis-sock
+                mountPath: /var/run/redis/redis.sock
+              - name: teamd
+                mountPath: /var/run/teamd/
+              - name: sonic-db-config
+                mountPath: /var/run/redis/sonic-db/
+              securityContext:
+                privileged: true
                 capabilities:
                     add: ["NET_ADMIN"]
             volumes:
             - name: redis-sock
               hostPath:
                   path: /tmp/redis.sock
+            - name: teamd
+              emptyDir: {}
             - name: sonic-db-config
               configMap:
                   name: sonic-db-config
@@ -390,18 +410,6 @@ spec:
               image: ghcr.io/microsonic/usonic-debug:201904
               imagePullPolicy: IfNotPresent
               command: ['nbrmgrd']
-              volumeMounts:
-              - name: redis-sock
-                mountPath: /var/run/redis/redis.sock
-              - name: sonic-db-config
-                mountPath: /var/run/redis/sonic-db/
-              securityContext:
-                capabilities:
-                    add: ["NET_ADMIN"]
-            - name: teammgrd
-              image: ghcr.io/microsonic/usonic-debug:201904
-              imagePullPolicy: IfNotPresent
-              command: ['teammgrd']
               volumeMounts:
               - name: redis-sock
                 mountPath: /var/run/redis/redis.sock
