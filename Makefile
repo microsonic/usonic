@@ -30,6 +30,10 @@ ifndef USONIC_LIBTEAM_IMAGE
     USONIC_LIBTEAM_IMAGE=usonic-libteam
 endif
 
+ifndef USONIC_SONIC_FRR_IMAGE
+    USONIC_SONIC_FRR_IMAGE=usonic-sonic-frr
+endif
+
 ifndef USONIC_CLI_IMAGE
     USONIC_CLI_IMAGE=usonic-cli
 endif
@@ -44,7 +48,7 @@ endif
 
 LIBTEAM_DIR := sm/libteam/
 
-all: swss-common sairedis libteam swss run-image debug-image
+all: swss-common sairedis libteam sonic-frr swss run-image debug-image
 
 cli:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_BUILD_OPTION) -f docker/cli.Dockerfile \
@@ -53,6 +57,10 @@ cli:
 swss-common:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_BUILD_OPTION) -f docker/build-swss-common.Dockerfile \
 							      -t $(DOCKER_REPO)/$(USONIC_SWSS_COMMON_IMAGE):$(USONIC_IMAGE_TAG) .
+
+sonic-frr:
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_BUILD_OPTION) -f docker/build-sonic-frr.Dockerfile \
+							      -t $(DOCKER_REPO)/$(USONIC_SONIC_FRR_IMAGE):$(USONIC_IMAGE_TAG) .
 
 sairedis:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_BUILD_OPTION) --build-arg USONIC_SWSS_COMMON_IMAGE=$(DOCKER_REPO)/$(USONIC_SWSS_COMMON_IMAGE):$(USONIC_IMAGE_TAG) \
@@ -78,6 +86,7 @@ run-image:
 							      --build-arg USONIC_SAIREDIS_IMAGE=$(DOCKER_REPO)/$(USONIC_SAIREDIS_IMAGE):$(USONIC_IMAGE_TAG) \
 							      --build-arg USONIC_SWSS_IMAGE=$(DOCKER_REPO)/$(USONIC_SWSS_IMAGE):$(USONIC_IMAGE_TAG) \
 							      --build-arg USONIC_LIBTEAM_IMAGE=$(DOCKER_REPO)/$(USONIC_LIBTEAM_IMAGE):$(USONIC_IMAGE_TAG) \
+							      --build-arg USONIC_SONIC_FRR_IMAGE=$(DOCKER_REPO)/$(USONIC_SONIC_FRR_IMAGE):$(USONIC_IMAGE_TAG) \
 							      -f docker/run.Dockerfile \
 							      -t $(DOCKER_REPO)/$(USONIC_RUN_IMAGE):$(USONIC_IMAGE_TAG) .
 
@@ -86,6 +95,7 @@ debug-image:
 							      --build-arg USONIC_SAIREDIS_IMAGE=$(DOCKER_REPO)/$(USONIC_SAIREDIS_IMAGE):$(USONIC_IMAGE_TAG) \
 							      --build-arg USONIC_SWSS_IMAGE=$(DOCKER_REPO)/$(USONIC_SWSS_IMAGE):$(USONIC_IMAGE_TAG) \
 							      --build-arg USONIC_LIBTEAM_IMAGE=$(DOCKER_REPO)/$(USONIC_LIBTEAM_IMAGE):$(USONIC_IMAGE_TAG) \
+							      --build-arg USONIC_SONIC_FRR_IMAGE=$(DOCKER_REPO)/$(USONIC_SONIC_FRR_IMAGE):$(USONIC_IMAGE_TAG) \
 							      --build-arg USONIC_RUN_IMAGE=$(DOCKER_REPO)/$(USONIC_RUN_IMAGE):$(USONIC_IMAGE_TAG) \
 							      -f docker/debug.Dockerfile \
 							      -t $(DOCKER_REPO)/$(USONIC_DEBUG_IMAGE):$(USONIC_IMAGE_TAG) .
