@@ -278,6 +278,120 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+    name: usonic-frr
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: usonic
+            usonic: frr
+    strategy:
+        type: Recreate
+    template:
+        metadata:
+            labels:
+                app: usonic
+                usonic: frr
+        spec:
+            serviceAccountName: usonic
+            hostNetwork: true
+            dnsPolicy: ClusterFirstWithHostNet
+            initContainers:
+            - name: wait-core
+              image: docker.io/bitnami/kubectl:latest
+              imagePullPolicy: IfNotPresent
+              command: ['kubectl', 'wait', '--for=condition=available', 'deploy/usonic-core', '--timeout=5m']
+            containers:
+            - name: fpmsyncd 
+              image: ghcr.io/microsonic/usonic-debug:201904
+              imagePullPolicy: IfNotPresent
+              command: ['fpmsyncd']
+              volumeMounts:
+              - name: redis-sock
+                mountPath: /var/run/redis/redis.sock
+              - name: sonic-db-config
+                mountPath: /var/run/redis/sonic-db/
+              securityContext:
+                privileged: true
+                capabilities:
+                    add: ["NET_ADMIN"]
+            - name: bgpcfgd 
+              image: ghcr.io/microsonic/usonic-debug:201904
+              imagePullPolicy: IfNotPresent
+              command: ['usr/bin/bgpcfgd']
+              volumeMounts:
+              - name: redis-sock
+                mountPath: /var/run/redis/redis.sock
+              - name: sonic-db-config
+                mountPath: /var/run/redis/sonic-db/
+              securityContext:
+                privileged: true
+                capabilities:
+                    add: ["NET_ADMIN"]
+            - name: zebra
+              image: ghcr.io/microsonic/usonic-debug:201904
+              imagePullPolicy: IfNotPresent
+              command: ['/usr/lib/frr/zebra -A 127.0.0.1 -s 90000000 -M fpm']
+              volumeMounts:
+              - name: redis-sock
+                mountPath: /var/run/redis/redis.sock
+              - name: sonic-db-config
+                mountPath: /var/run/redis/sonic-db/
+              securityContext:
+                privileged: true
+                capabilities:
+                    add: ["NET_ADMIN"]
+            - name: staticd 
+              image: ghcr.io/microsonic/usonic-debug:201904
+              imagePullPolicy: IfNotPresent
+              command: ['/usr/lib/frr/staticd -A 127.0.0.1']
+              volumeMounts:
+              - name: redis-sock
+                mountPath: /var/run/redis/redis.sock
+              - name: sonic-db-config
+                mountPath: /var/run/redis/sonic-db/
+              securityContext:
+                privileged: true
+                capabilities:
+                    add: ["NET_ADMIN"]
+            - name: bgpd 
+              image: ghcr.io/microsonic/usonic-debug:201904
+              imagePullPolicy: IfNotPresent
+              command: ['/usr/lib/frr/bgpd -A 127.0.0.1']
+              volumeMounts:
+              - name: redis-sock
+                mountPath: /var/run/redis/redis.sock
+              - name: sonic-db-config
+                mountPath: /var/run/redis/sonic-db/
+              securityContext:
+                privileged: true
+                capabilities:
+                    add: ["NET_ADMIN"]
+            - name: vtysh 
+              image: ghcr.io/microsonic/usonic-debug:201904
+              imagePullPolicy: IfNotPresent
+              command: ['/usr/bin/vtysh -b']
+              volumeMounts:
+              - name: redis-sock
+                mountPath: /var/run/redis/redis.sock
+              - name: sonic-db-config
+                mountPath: /var/run/redis/sonic-db/
+              securityContext:
+                privileged: true
+                capabilities:
+                    add: ["NET_ADMIN"]
+            volumes:
+            - name: redis-sock
+              hostPath:
+                  path: /tmp/redis.sock
+            - name: sonic-db-config
+              configMap:
+                  name: sonic-db-config
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
     name: usonic-teamd
 spec:
     replicas: 1
