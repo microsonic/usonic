@@ -309,19 +309,8 @@ spec:
               volumeMounts:
               - name: redis-sock
                 mountPath: /var/run/redis/redis.sock
-              - name: sonic-db-config
-                mountPath: /var/run/redis/sonic-db/
-              securityContext:
-                privileged: true
-                capabilities:
-                    add: ["NET_ADMIN"]
-            - name: bgpcfgd 
-              image: ghcr.io/microsonic/usonic-debug:201904
-              imagePullPolicy: IfNotPresent
-              command: ['usr/bin/bgpcfgd']
-              volumeMounts:
-              - name: redis-sock
-                mountPath: /var/run/redis/redis.sock
+              - name: frr
+                mountPath: /var/run/frr/
               - name: sonic-db-config
                 mountPath: /var/run/redis/sonic-db/
               securityContext:
@@ -331,10 +320,12 @@ spec:
             - name: zebra
               image: ghcr.io/microsonic/usonic-debug:201904
               imagePullPolicy: IfNotPresent
-              command: ['/usr/lib/frr/zebra -A 127.0.0.1 -s 90000000 -M fpm']
+              command: ['/usr/lib/frr/zebra', '-A', '127.0.0.1', '-s', '90000000', '-M', 'fpm']
               volumeMounts:
               - name: redis-sock
                 mountPath: /var/run/redis/redis.sock
+              - name: frr
+                mountPath: /var/run/frr/
               - name: sonic-db-config
                 mountPath: /var/run/redis/sonic-db/
               securityContext:
@@ -344,10 +335,12 @@ spec:
             - name: staticd 
               image: ghcr.io/microsonic/usonic-debug:201904
               imagePullPolicy: IfNotPresent
-              command: ['/usr/lib/frr/staticd -A 127.0.0.1']
+              command: ['/usr/lib/frr/staticd', '-A', '127.0.0.1']
               volumeMounts:
               - name: redis-sock
                 mountPath: /var/run/redis/redis.sock
+              - name: frr
+                mountPath: /var/run/frr/
               - name: sonic-db-config
                 mountPath: /var/run/redis/sonic-db/
               securityContext:
@@ -357,23 +350,12 @@ spec:
             - name: bgpd 
               image: ghcr.io/microsonic/usonic-debug:201904
               imagePullPolicy: IfNotPresent
-              command: ['/usr/lib/frr/bgpd -A 127.0.0.1']
+              command: ['/usr/lib/frr/bgpd', '-A', '127.0.0.1']
               volumeMounts:
               - name: redis-sock
                 mountPath: /var/run/redis/redis.sock
-              - name: sonic-db-config
-                mountPath: /var/run/redis/sonic-db/
-              securityContext:
-                privileged: true
-                capabilities:
-                    add: ["NET_ADMIN"]
-            - name: vtysh 
-              image: ghcr.io/microsonic/usonic-debug:201904
-              imagePullPolicy: IfNotPresent
-              command: ['/usr/bin/vtysh -b']
-              volumeMounts:
-              - name: redis-sock
-                mountPath: /var/run/redis/redis.sock
+              - name: frr
+                mountPath: /var/run/frr/
               - name: sonic-db-config
                 mountPath: /var/run/redis/sonic-db/
               securityContext:
@@ -384,6 +366,8 @@ spec:
             - name: redis-sock
               hostPath:
                   path: /tmp/redis.sock
+            - name: frr
+              emptyDir: {}
             - name: sonic-db-config
               configMap:
                   name: sonic-db-config

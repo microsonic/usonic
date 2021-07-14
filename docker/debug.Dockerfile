@@ -21,7 +21,6 @@ RUN rm -f /var/run/teamd/* && \
 RUN --mount=type=cache,target=/var/cache/apt --mount=type=cache,target=/var/lib/apt \
 apt update && apt-get install -qy -y --no-install-recommends apt-utils libpython-dev strace vim gdb procps redis-server syslog-ng tcpdump libdaemon-dev libdbus-1-dev libjansson-dev libnl-3-dev libnl-cli-3-dev libnl-genl-3-dev libnl-route-3-dev pkg-config debhelper libdbus-1-3 libdaemon0 libjansson4 libc-ares2 iproute2 libpython2.7 libjson-c3 logrotate libunwind8 python3 python python-pip
 
-ADD docker/bgpcfgd /usr/bin/
 
 RUN pip install setuptools
 
