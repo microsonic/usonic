@@ -24,7 +24,7 @@ jobs:
               f.write(f"DOCKER_IMAGE_TAG={tag}")
           shell: python
         - uses: actions/checkout@v2
-        - run: git submodule update --init --recursive sm/sonic-py-swsssdk sm/sonic-sairedis sm/sonic-swss sm/sonic-swss-common sm/sonic-sonic-frr
+        - run: git submodule update --init --recursive sm/sonic-py-swsssdk sm/sonic-sairedis sm/sonic-swss sm/sonic-swss-common sm/sonic-frr
         - run: git submodule update --init sm/sonic-buildimage
         - run: cd sm/libteam && make all
         - name: Cache Docker layers
@@ -40,7 +40,7 @@ jobs:
           uses: docker/build-push-action@v2
           with:
             context: ./
-            file: ./docker/build-swss-common.Dockerfile
+            file: ./docker/build-sonic-frr.Dockerfile
             builder: ${{ steps.buildx.outputs.name }}
             tags: ghcr.io/microsonic/usonic-sonic-frr:${{ env.DOCKER_IMAGE_TAG }}
             cache-from: type=local,src=/tmp/.buildx-cache
