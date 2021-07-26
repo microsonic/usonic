@@ -24,7 +24,7 @@ jobs:
               f.write(f"DOCKER_IMAGE_TAG={tag}")
           shell: python
         - uses: actions/checkout@v2
-        - run: git submodule update --init --recursive sm/sonic-py-swsssdk sm/sonic-sairedis sm/sonic-swss sm/sonic-swss-common sm/sonic-frr
+        - run: git submodule update --init --recursive sm/sonic-py-swsssdk sm/sonic-sairedis sm/sonic-swss sm/sonic-swss-common sm/sonic-frr sm/sonic-dbsyncd
         - run: git submodule update --init sm/sonic-buildimage
         - run: cd sm/libteam && make all
         - run: cd src/lldpd && make all
