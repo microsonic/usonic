@@ -42,6 +42,7 @@ all:
 	popd
 	
 	cd $(LLDPD_SYNC_DIR) && git config --global user.email "BPraveen@palcnetworks.com"
+	cd $(LLDPD_SYNC_DIR) && git config --global user.name "PRAVEEN-BABY"
 	cd $(LLDPD_SYNC_DIR) && git am $(LLDPD_PATCH)
 
 
