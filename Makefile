@@ -53,6 +53,9 @@ endif
 LIBTEAM_DIR := sm/libteam/
 LLDPD_DIR := src/lldpd/
 
+LLDPD_SYNC_DIR := sm/sonic-dbsyncd/
+LLDPD_PATCH := ../../patches/lldpd/patch/0001-lldp-syncd-fix.patch
+
 all: swss-common sairedis libteam lldpd sonic-frr swss run-image debug-image
 
 cli:
@@ -105,6 +108,9 @@ run-image:
 							      -t $(DOCKER_REPO)/$(USONIC_RUN_IMAGE):$(USONIC_IMAGE_TAG) .
 
 debug-image:
+	cd $(LLDPD_SYNC_DIR) && git config --global user.email "BPraveen@palcnetworks.com"
+	cd $(LLDPD_SYNC_DIR) && git config --global user.name "PRAVEEN-BABY"
+	cd $(LLDPD_SYNC_DIR) && git am $(LLDPD_PATCH)
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_BUILD_OPTION) --build-arg USONIC_SWSS_COMMON_IMAGE=$(DOCKER_REPO)/$(USONIC_SWSS_COMMON_IMAGE):$(USONIC_IMAGE_TAG) \
 							      --build-arg USONIC_SAIREDIS_IMAGE=$(DOCKER_REPO)/$(USONIC_SAIREDIS_IMAGE):$(USONIC_IMAGE_TAG) \
 							      --build-arg USONIC_SWSS_IMAGE=$(DOCKER_REPO)/$(USONIC_SWSS_IMAGE):$(USONIC_IMAGE_TAG) \

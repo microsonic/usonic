@@ -2,12 +2,10 @@
 ARG USONIC_SWSS_COMMON_IMAGE=usonic-swss-common:latest
 ARG USONIC_SAIREDIS_IMAGE=usonic-sairedis:latest
 ARG USONIC_LIBTEAM_IMAGE=usonic-libteam:latest
-ARG USONIC_LLDPD_IMAGE=usonic-lldpd:latest
 
 FROM ${USONIC_SWSS_COMMON_IMAGE} as swss_common
 FROM ${USONIC_SAIREDIS_IMAGE} as sairedis
 FROM ${USONIC_LIBTEAM_IMAGE} as libteam
-FROM ${USONIC_LLDPD_IMAGE} as lldpd
 
 FROM debian:buster
 
