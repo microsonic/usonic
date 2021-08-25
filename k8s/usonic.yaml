@@ -26,6 +26,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
     name: usonic-core
+    labels:
+        app: usonic
 spec:
     replicas: 1
     selector:
@@ -160,6 +162,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
     name: usonic-port
+    labels:
+        app: usonic
 spec:
     replicas: 1
     selector:
@@ -230,6 +234,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
     name: usonic-neighbor
+    labels:
+        app: usonic
 spec:
     replicas: 1
     selector:
@@ -279,6 +285,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
     name: usonic-frr
+    labels:
+        app: usonic
 spec:
     replicas: 1
     selector:
@@ -300,7 +308,7 @@ spec:
             - name: wait-core
               image: docker.io/bitnami/kubectl:latest
               imagePullPolicy: IfNotPresent
-              command: ['kubectl', 'wait', '--for=condition=available', 'deploy/usonic-core', '--timeout=5m']
+              command: ['kubectl', 'wait', '--for=condition=available', 'deploy/usonic-port', '--timeout=5m']
             containers:
             - name: fpmsyncd 
               image: ghcr.io/microsonic/usonic-debug:201904
@@ -377,6 +385,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
     name: usonic-teamd
+    labels:
+        app: usonic
 spec:
     replicas: 1
     selector:
@@ -446,6 +456,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
     name: usonic-lldpd
+    labels:
+        app: usonic
 spec:
     replicas: 1
     selector:
@@ -467,7 +479,7 @@ spec:
             - name: wait-core
               image: docker.io/bitnami/kubectl:latest
               imagePullPolicy: IfNotPresent
-              command: ['kubectl', 'wait', '--for=condition=available', 'deploy/usonic-core', '--timeout=5m']
+              command: ['kubectl', 'wait', '--for=condition=available', 'deploy/usonic-port', '--timeout=5m']
             containers:
             - name: lldpd
               image: ghcr.io/microsonic/usonic-debug:201904
@@ -530,6 +542,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
     name: usonic-mgrd
+    labels:
+        app: usonic
 spec:
     replicas: 1
     selector:
@@ -552,6 +566,13 @@ spec:
               image: docker.io/bitnami/kubectl:latest
               imagePullPolicy: IfNotPresent
               command: ['kubectl', 'wait', '--for=condition=available', 'deploy/usonic-port', '--timeout=5m']
+            - name: swssconfig
+              image: ghcr.io/microsonic/usonic-debug:201904
+              imagePullPolicy: IfNotPresent
+              command: ['swssconfig']
+              volumeMounts:
+              - name: redis-sock
+                mountPath: /var/run/redis/redis.sock
             containers:
             - name: vlanmgrd
               image: ghcr.io/microsonic/usonic-debug:201904
